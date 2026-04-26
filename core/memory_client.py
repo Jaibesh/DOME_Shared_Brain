@@ -131,7 +131,7 @@ class MemoryClient:
     @property
     def client(self):
         """Lazy-load the Supabase client."""
-        if self._client is None:
+        if self._client is None and not self._local_mode:
             try:
                 from core.supabase_client import get_supabase
                 self._client = get_supabase()
@@ -160,6 +160,9 @@ class MemoryClient:
         """
         memory_id = str(uuid.uuid4())
         embedding = _get_embedding(content)
+        
+        # Trigger lazy client loader (sets _local_mode if cloud unavailable)
+        self.client
         
         if self._local_mode:
             return self._add_local(memory_id, content, category, tags, metadata)
@@ -201,6 +204,9 @@ class MemoryClient:
             category: Filter by category
             agent_id: Filter by agent (None = search all agents)
         """
+        # Trigger lazy client loader
+        self.client
+        
         if self._local_mode:
             return self._search_local(query, limit, category)
         
@@ -278,6 +284,9 @@ class MemoryClient:
         insight_id = str(uuid.uuid4())
         embedding = _get_embedding(f"{summary} {content}")
         
+        # Trigger lazy client loader
+        self.client
+        
         if self._local_mode:
             return self._log_insight_local(insight_id, category, summary, content, tags)
         
@@ -306,6 +315,9 @@ class MemoryClient:
         """
         Search insights semantically. Backward-compatible API.
         """
+        # Trigger lazy client loader
+        self.client
+        
         if self._local_mode:
             return self._search_insights_local(query, category)
         
