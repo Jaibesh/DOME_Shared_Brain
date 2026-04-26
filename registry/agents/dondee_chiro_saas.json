@@ -1,0 +1,31 @@
+{
+    "agent_id": "dondee_chiro_saas",
+    "display_name": "Dondee Chiro SaaS Agent",
+    "version": "2.2.2",
+    "workspace_path": "c:\\Users\\robis\\Agentic_workflows\\Dondee_solutions\\chiro-saas-agent-pack",
+    "capabilities": [
+        "lead_management",
+        "appointment_scheduling",
+        "sms_communication",
+        "email_communication",
+        "policy_compliance",
+        "crm_integration"
+    ],
+    "tools": [
+        "twilio_sms",
+        "gmail_email",
+        "policy_gate",
+        "tenant_memory",
+        "lead_tracker"
+    ],
+    "knowledge_domains": [
+        "chiropractic",
+        "healthcare_compliance",
+        "patient_communication",
+        "saas_operations"
+    ],
+    "last_updated": "2026-02-04T16:50:00Z",
+    "dome_version": "2.2.2",
+    "status": "active",
+    "notes": "Chiropractic SaaS agent with multi-channel communication"
+}

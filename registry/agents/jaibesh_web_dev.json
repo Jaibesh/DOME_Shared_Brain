@@ -1,0 +1,27 @@
+{
+    "agent_id": "jaibesh_web_dev",
+    "display_name": "Jaibesh Web Dev",
+    "version": "2.2.2",
+    "workspace_path": "c:\\Users\\robis\\Agentic_workflows\\Jaibesh_web_dev",
+    "capabilities": [
+        "web_development",
+        "compliance_checking",
+        "deployment",
+        "monitoring"
+    ],
+    "tools": [
+        "site_manager",
+        "compliance_checker",
+        "deployment_utils"
+    ],
+    "knowledge_domains": [
+        "web_design",
+        "compliance",
+        "hipaa",
+        "tcpa",
+        "twilio"
+    ],
+    "last_updated": "2026-02-09T09:50:21-07:00",
+    "dome_version": "2.2.2",
+    "status": "active"
+}

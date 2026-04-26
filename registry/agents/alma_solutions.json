@@ -1,0 +1,28 @@
+{
+    "agent_id": "alma_solutions",
+    "display_name": "Alma Business Agent",
+    "version": "2.2.2",
+    "workspace_path": "c:\\Users\\robis\\Agentic_workflows\\Alma_solutions",
+    "capabilities": [
+        "estimating",
+        "job_tracking",
+        "service_integration",
+        "reporting",
+        "email_automation"
+    ],
+    "tools": [
+        "estimating_engine",
+        "job_tracker",
+        "hcp_client",
+        "email_utils",
+        "reporting"
+    ],
+    "knowledge_domains": [
+        "construction",
+        "business_operations",
+        "service_management"
+    ],
+    "last_updated": "2026-02-04T16:45:00Z",
+    "dome_version": "2.2.2",
+    "status": "active"
+}

@@ -1,0 +1,26 @@
+{
+    "agent_id": "game_dev",
+    "display_name": "Game Development Agent",
+    "version": "2.2.2",
+    "workspace_path": "c:\\Users\\robis\\Agentic_workflows\\Game_dev",
+    "capabilities": [
+        "game_design",
+        "code_generation",
+        "testing",
+        "debugging"
+    ],
+    "tools": [
+        "code_generator",
+        "test_harness",
+        "game_engine_interface"
+    ],
+    "knowledge_domains": [
+        "game_development",
+        "programming",
+        "game_design"
+    ],
+    "last_updated": "2026-02-04T16:50:00Z",
+    "dome_version": "2.2.2",
+    "status": "active",
+    "notes": "Game development and testing agent (renamed from test_agent)"
+}

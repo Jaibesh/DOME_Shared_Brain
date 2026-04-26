@@ -1,0 +1,27 @@
+{
+    "agent_id": "mlm_solutions",
+    "display_name": "LifeVantage MLM Agent",
+    "version": "2.2.2",
+    "workspace_path": "c:\\Users\\robis\\Agentic_workflows\\MLM_solutions",
+    "capabilities": [
+        "lead_qualification",
+        "compliance_checking",
+        "compensation_calculation",
+        "crm_integration"
+    ],
+    "tools": [
+        "lead_qualifier",
+        "compliance_checker",
+        "compensation_calculator",
+        "hubspot_connector"
+    ],
+    "knowledge_domains": [
+        "mlm",
+        "lifevantage",
+        "compliance",
+        "network_marketing"
+    ],
+    "last_updated": "2026-02-04T16:45:00Z",
+    "dome_version": "2.2.2",
+    "status": "active"
+}

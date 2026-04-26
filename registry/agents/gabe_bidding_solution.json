@@ -1,0 +1,27 @@
+{
+    "agent_id": "gabe_bidding_solution",
+    "display_name": "Gabe Bidding Agent",
+    "version": "2.2.2",
+    "workspace_path": "c:\\Users\\robis\\Agentic_workflows\\Gabe_bidding_solution",
+    "capabilities": [
+        "bidding",
+        "estimating",
+        "job_tracking"
+    ],
+    "tools": [
+        "estimating_engine",
+        "job_tracker"
+    ],
+    "knowledge_domains": [
+        "construction",
+        "bidding",
+        "estimating"
+    ],
+    "last_updated": "2026-02-04T16:45:00Z",
+    "dome_version": "2.2.2",
+    "status": "active",
+    "shared_tools": [
+        "estimating_engine (from D:\\DOME_CORE\\tools\\agency)",
+        "job_tracker (from D:\\DOME_CORE\\tools\\agency)"
+    ]
+}
