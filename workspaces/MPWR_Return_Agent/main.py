@@ -25,9 +25,9 @@ def check_tour_returns():
     """Polls MPOWR to check if today's tours are completed."""
     now = datetime.now(MDT)
     
-    # Only run between 12:00 PM and 6:00 PM
-    if now.hour < 12 or now.hour >= 18:
-        print(f"[{now.strftime('%I:%M %p')}] Outside operating hours (12PM - 6PM). Skipping.")
+    # Only run between 8:00 AM and 8:00 PM
+    if now.hour < 8 or now.hour >= 20:
+        print(f"[{now.strftime('%I:%M %p')}] Outside operating hours (8AM - 8PM). Skipping.")
         return
 
     print(f"\n[{now.strftime('%H:%M:%S')}] --- Checking Tour Returns ---")
@@ -94,7 +94,7 @@ def check_tour_returns():
 
 
 if __name__ == "__main__":
-    print(f"[{AGENT_NAME}] Starting Tour Sync Daemon (Runs hourly from 12PM-6PM)...")
+    print(f"[{AGENT_NAME}] Starting Tour Sync Daemon (Runs hourly from 8AM-8PM)...")
     
     # Run immediately on startup to test
     check_tour_returns()

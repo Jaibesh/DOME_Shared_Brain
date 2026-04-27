@@ -20,34 +20,51 @@ class MpowrReturnBot:
         try:
             self.page.goto(url, wait_until="domcontentloaded", timeout=30000)
             
-            # Wait for the status badge to appear
-            # MPOWR usually has a badge with classes like "badge", "status-badge", etc.
-            # It usually says "Scheduled", "Checked Out", "Completed", etc.
-            # We look for the h1 header area which contains the status badge
-            self.page.wait_for_selector(".reservation-header-status, .badge", timeout=15000)
-            
-            # Read all badges and find the one that represents the status
-            # It's usually the prominent one near the top. Let's just grab the text of the page header area.
-            # Or we can look specifically for a status badge text.
-            header_text = self.page.locator("h1, .reservation-header").inner_text().lower()
-            
-            if "completed" in header_text:
-                return "Completed"
-            if "returned" in header_text:
-                return "Returned"
-            if "cancelled" in header_text:
-                return "Cancelled"
-            if "checked out" in header_text:
-                return "Checked Out"
+            # 1. Primary Strategy: Look for standard MPOWR badges
+            try:
+                self.page.wait_for_selector(".reservation-header-status, .badge", timeout=10000)
+                # Check header text first
+                header_texts = self.page.locator("h1, .reservation-header").all_inner_texts()
+                for ht in header_texts:
+                    ht_lower = ht.lower()
+                    if "completed" in ht_lower: return "Completed"
+                    if "returned" in ht_lower: return "Returned"
+                    if "checked out" in ht_lower: return "Checked Out"
+                    if "cancelled" in ht_lower: return "Cancelled"
                 
-            # If not in header text, look for any badge containing standard statuses
-            badges = self.page.locator(".badge").all_inner_texts()
-            for b in badges:
-                bt = b.lower()
-                if "completed" in bt: return "Completed"
-                if "returned" in bt: return "Returned"
-                if "checked out" in bt: return "Checked Out"
-                if "scheduled" in bt: return "Scheduled"
+                # Check badges
+                badges = self.page.locator(".badge").all_inner_texts()
+                for b in badges:
+                    bt = b.lower()
+                    if "completed" in bt: return "Completed"
+                    if "returned" in bt: return "Returned"
+                    if "checked out" in bt: return "Checked Out"
+                    if "scheduled" in bt: return "Scheduled"
+            except Exception:
+                pass # Timeout on specific selectors, fall back to aggressive text search
+                
+            # 2. Fallback Strategy: Aggressive DOM-traversal via get_by_text
+            # If classes change, we just search the visible page text for the exact status words
+            print(f"[ReturnBot] Fallback text search for {mpwr_id}...")
+            
+            # Wait for the page body to be stable
+            self.page.wait_for_selector("body", timeout=5000)
+            
+            for status in ["Completed", "COMPLETED", "Returned", "RETURNED"]:
+                if self.page.get_by_text(status, exact=True).is_visible():
+                    return "Completed" if "complete" in status.lower() else "Returned"
+                    
+            for status in ["Checked Out", "CHECKED OUT"]:
+                if self.page.get_by_text(status, exact=True).is_visible():
+                    return "Checked Out"
+                    
+            for status in ["Cancelled", "CANCELLED"]:
+                if self.page.get_by_text(status, exact=True).is_visible():
+                    return "Cancelled"
+                    
+            for status in ["Scheduled", "SCHEDULED"]:
+                if self.page.get_by_text(status, exact=True).is_visible():
+                    return "Scheduled"
                 
             return "Unknown"
             
