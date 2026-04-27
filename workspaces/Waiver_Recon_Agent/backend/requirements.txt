@@ -1,0 +1,16 @@
+playwright
+gspread
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+requests
+python-dotenv
+apscheduler
+fastapi
+uvicorn
+thefuzz
+pydantic
+slack-sdk
+pytest
+supabase==2.28.3
+pytz

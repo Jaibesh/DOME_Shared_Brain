@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MPWR Reservation Agent — System Documentation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-primary: #0f1117;
+    --bg-secondary: #161922;
+    --bg-card: #1c1f2e;
+    --bg-card-hover: #222639;
+    --bg-sidebar: #0c0e14;
+    --border: #2a2d3e;
+    --border-accent: #3b3f54;
+    --text-primary: #e4e4e7;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent: #6366f1;
+    --accent-light: #818cf8;
+    --accent-bg: rgba(99, 102, 241, 0.1);
+    --success: #22c55e;
+    --success-bg: rgba(34, 197, 94, 0.1);
+    --warning: #f59e0b;
+    --warning-bg: rgba(245, 158, 11, 0.1);
+    --danger: #ef4444;
+    --danger-bg: rgba(239, 68, 68, 0.1);
+    --info: #3b82f6;
+    --info-bg: rgba(59, 130, 246, 0.1);
+    --skip: #a78bfa;
+    --skip-bg: rgba(167, 139, 250, 0.1);
+    --gradient-1: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+    --gradient-2: linear-gradient(135deg, #0f1117 0%, #161922 100%);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.7;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ---- SIDEBAR ---- */
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    width: 280px;
+    height: 100vh;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    z-index: 100;
+    padding: 24px 0;
+  }
+
+  .sidebar-brand {
+    padding: 0 24px 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .sidebar-brand h1 {
+    font-size: 16px;
+    font-weight: 700;
+    background: var(--gradient-1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.3px;
+  }
+
+  .sidebar-brand p {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .sidebar-section {
+    padding: 8px 16px 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+  }
+
+  .sidebar a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 24px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 400;
+    transition: all 0.15s ease;
+    border-left: 3px solid transparent;
+  }
+
+  .sidebar a:hover {
+    background: var(--accent-bg);
+    color: var(--accent-light);
+    border-left-color: var(--accent);
+  }
+
+  .sidebar a .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  /* ---- MAIN ---- */
+  .main {
+    margin-left: 280px;
+    flex: 1;
+    max-width: 900px;
+    padding: 48px 56px 120px;
+  }
+
+  /* ---- HERO ---- */
+  .hero {
+    background: var(--gradient-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 48px;
+    margin-bottom: 48px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: var(--accent-bg);
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent-light);
+    margin-bottom: 16px;
+  }
+
+  .hero h1 {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 12px;
+    line-height: 1.2;
+  }
+
+  .hero p {
+    font-size: 15px;
+    color: var(--text-secondary);
+    max-width: 600px;
+    line-height: 1.8;
+  }
+
+  .hero .meta-row {
+    display: flex;
+    gap: 24px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+
+  .hero .meta-item {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .hero .meta-item strong {
+    color: var(--text-secondary);
+  }
+
+  /* ---- SECTIONS ---- */
+  section {
+    margin-bottom: 56px;
+    scroll-margin-top: 24px;
+  }
+
+  h2 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  h2 .section-icon { font-size: 22px; }
+
+  h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 28px 0 12px;
+    color: var(--accent-light);
+  }
+
+  h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 20px 0 8px;
+    color: var(--text-primary);
+  }
+
+  p { margin-bottom: 12px; color: var(--text-secondary); font-size: 14px; }
+
+  /* ---- CAPABILITY CARDS ---- */
+  .cap-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 20px 0;
+  }
+
+  .cap-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 18px 20px;
+    transition: all 0.2s ease;
+  }
+
+  .cap-card:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
+
+  .cap-card .card-icon { font-size: 24px; margin-bottom: 8px; }
+  .cap-card h4 { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
+  .cap-card p { margin: 0; font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+
+  /* ---- TABLES ---- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 24px;
+    font-size: 13px;
+  }
+
+  thead th {
+    text-align: left;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border-bottom: 2px solid var(--accent);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+  }
+
+  tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  tbody tr:hover { background: var(--bg-card); }
+
+  td code, th code {
+    background: var(--accent-bg);
+    color: var(--accent-light);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+
+  /* ---- CODE BLOCKS ---- */
+  pre {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 20px 24px;
+    overflow-x: auto;
+    margin: 16px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.8;
+    color: var(--text-secondary);
+  }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+  }
+
+  /* ---- FLOW CARDS ---- */
+  .flow-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin: 16px 0;
+    position: relative;
+    border-left: 4px solid var(--accent);
+  }
+
+  .flow-card h4 {
+    margin: 0 0 12px;
+    font-size: 15px;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .flow-step {
+    display: flex;
+    gap: 12px;
+    margin: 8px 0;
+    align-items: flex-start;
+  }
+
+  .flow-num {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    background: var(--accent-bg);
+    border: 1px solid rgba(99,102,241,0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-light);
+  }
+
+  .flow-step p { margin: 0; font-size: 13px; line-height: 1.7; padding-top: 2px; }
+
+  /* ---- ALERT BOXES ---- */
+  .alert {
+    border-radius: var(--radius-sm);
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-size: 13px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    line-height: 1.7;
+  }
+
+  .alert-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .alert p { margin: 0; }
+
+  .alert-info { background: var(--info-bg); border: 1px solid rgba(59,130,246,0.2); }
+  .alert-success { background: var(--success-bg); border: 1px solid rgba(34,197,94,0.2); }
+  .alert-warning { background: var(--warning-bg); border: 1px solid rgba(245,158,11,0.2); }
+  .alert-danger { background: var(--danger-bg); border: 1px solid rgba(239,68,68,0.2); }
+
+  /* ---- FILE TREE ---- */
+  .file-tree {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 20px 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 2;
+    color: var(--text-secondary);
+    margin: 16px 0;
+  }
+
+  .file-tree .dir { color: var(--accent-light); font-weight: 500; }
+  .file-tree .file { color: var(--text-muted); }
+  .file-tree .comment { color: var(--text-muted); font-style: italic; font-family: 'Inter', sans-serif; font-size: 11px; }
+
+  /* ---- SLACK TABLE ICONS ---- */
+  .slack-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .si-success { background: var(--success-bg); }
+  .si-danger { background: var(--danger-bg); }
+  .si-warning { background: var(--warning-bg); }
+  .si-skip { background: var(--skip-bg); }
+  .si-info { background: var(--info-bg); }
+
+  /* ---- SAFETY GRID ---- */
+  .safety-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 16px 0;
+  }
+
+  .safety-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 18px 20px;
+  }
+
+  .safety-card h4 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .safety-card p { margin: 0; font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+
+  /* ---- ENV TABLE ---- */
+  .env-var { font-weight: 600; color: var(--accent-light); }
+
+  /* ---- SCROLLBAR ---- */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  @media (max-width: 1000px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 24px; }
+    .cap-grid, .safety-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <h1>⚡ MPWR Agent</h1>
+    <p>System Documentation v2.0</p>
+  </div>
+
+  <div class="sidebar-section">Overview</div>
+  <a href="#overview"><span class="nav-icon">🏠</span> System Overview</a>
+  <a href="#capabilities"><span class="nav-icon">✨</span> Capabilities</a>
+  <a href="#architecture"><span class="nav-icon">🏗️</span> Architecture</a>
+
+  <div class="sidebar-section">Data Flows</div>
+  <a href="#flow-create"><span class="nav-icon">🆕</span> New Booking</a>
+  <a href="#flow-cancel"><span class="nav-icon">🚫</span> Cancellation</a>
+  <a href="#flow-update"><span class="nav-icon">🔄</span> Reschedule / Update</a>
+  <a href="#flow-payment"><span class="nav-icon">💰</span> Payment Settlement</a>
+
+  <div class="sidebar-section">Modules</div>
+  <a href="#mod-main"><span class="nav-icon">🎯</span> main.py</a>
+  <a href="#mod-webhook-server"><span class="nav-icon">📡</span> webhook_server.py</a>
+  <a href="#mod-webhook-processor"><span class="nav-icon">🧠</span> webhook_processor.py</a>
+  <a href="#mod-bot"><span class="nav-icon">🤖</span> mpowr_creator_bot.py</a>
+  <a href="#mod-mapper"><span class="nav-icon">🗺️</span> data_mapper.py</a>
+  <a href="#mod-sheets"><span class="nav-icon">📊</span> sheets.py</a>
+  <a href="#mod-slack"><span class="nav-icon">💬</span> slack_notifier.py</a>
+  <a href="#mod-other"><span class="nav-icon">📦</span> Other Modules</a>
+
+  <div class="sidebar-section">Reference</div>
+  <a href="#mapping"><span class="nav-icon">🗂️</span> Mapping Tables</a>
+  <a href="#slack-ref"><span class="nav-icon">🔔</span> Slack Notifications</a>
+  <a href="#safety"><span class="nav-icon">🛡️</span> Safety Mechanisms</a>
+  <a href="#config"><span class="nav-icon">⚙️</span> Configuration</a>
+  <a href="#files"><span class="nav-icon">📁</span> File Structure</a>
+
+  <div class="sidebar-section">Operations</div>
+  <a href="#startup"><span class="nav-icon">🚀</span> Startup & Deploy</a>
+  <a href="#troubleshooting"><span class="nav-icon">🔧</span> Troubleshooting</a>
+  <a href="#limitations"><span class="nav-icon">⚠️</span> Known Limitations</a>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero" id="overview">
+    <div class="badge">⚡ Version 2.0 — Webhook Orchestrator Release</div>
+    <h1>MPWR Reservation Agent</h1>
+    <p>A fully autonomous system that manages the entire reservation lifecycle between TripWorks and MPOWR — creating, cancelling, rescheduling, and settling payments without manual intervention.</p>
+    <div class="meta-row">
+      <span class="meta-item"><strong>Last Updated:</strong> April 16, 2026</span>
+      <span class="meta-item"><strong>Maintainer:</strong> Epic 4x4 Adventures Engineering</span>
+      <span class="meta-item"><strong>Stack:</strong> Python · Playwright · Google Sheets · Slack</span>
+    </div>
+  </div>
+
+  <!-- CAPABILITIES -->
+  <section id="capabilities">
+    <h2><span class="section-icon">✨</span> Capabilities</h2>
+    <div class="cap-grid">
+      <div class="cap-card">
+        <div class="card-icon">🆕</div>
+        <h4>Create Reservations</h4>
+        <p>When a customer books on TripWorks, the agent automatically creates the matching reservation in MPOWR by filling out the web form.</p>
+      </div>
+      <div class="cap-card">
+        <div class="card-icon">🚫</div>
+        <h4>Cancel Reservations</h4>
+        <p>When a booking is cancelled in TripWorks, the agent cancels it in MPOWR using "Customer Reason" with no cancellation fee.</p>
+      </div>
+      <div class="cap-card">
+        <div class="card-icon">🔄</div>
+        <h4>Reschedule & Update</h4>
+        <p>When dates, vehicles, or activity types change, the agent updates the MPOWR reservation using the "Great Reset" strategy.</p>
+      </div>
+      <div class="cap-card">
+        <div class="card-icon">💰</div>
+        <h4>Settle Payments</h4>
+        <p>When a TripWorks balance is paid in full, the agent settles it in MPOWR using Cash. Partial payments are intentionally skipped.</p>
+      </div>
+      <div class="cap-card">
+        <div class="card-icon">👁️</div>
+        <h4>Monitor Rental Status</h4>
+        <p>Every 30 minutes, checks MPOWR for rental status changes (Checked Out → Returned) and updates the Guest Database.</p>
+      </div>
+      <div class="cap-card">
+        <div class="card-icon">📊</div>
+        <h4>Guest Database Sync</h4>
+        <p>Maintains a V2 Guest Database in Google Sheets with 47+ columns of normalized data for every reservation.</p>
+      </div>
+    </div>
+
+    <div class="alert alert-info">
+      <span class="alert-icon">ℹ️</span>
+      <div>
+        <p><strong>What it does NOT do:</strong> Store credit card info in MPOWR (all settlements use Cash) · Charge cancellation fees · Process partial payments · Create reservations for test bookings, TripAdvisor Exclusives, Pro XPeriences, or Guide Car Passengers.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ARCHITECTURE -->
+  <section id="architecture">
+    <h2><span class="section-icon">🏗️</span> Architecture</h2>
+    <p>The system connects three external platforms (TripWorks, MPOWR, Slack) through a local Python daemon running on a Windows machine, using an ngrok tunnel to receive webhooks.</p>
+
+    <pre>
+┌─────────────────────────┐     ┌──────────────────────────────┐     ┌─────────────┐
+│      TripWorks          │     │        MPOWR (Polaris)       │     │    Slack     │
+│  (Customer Bookings)    │     │    (Fleet Management)        │     │  (Alerts)    │
+└───────────┬─────────────┘     └──────────────▲───────────────┘     └──────▲──────┘
+            │ Webhooks                         │ Playwright UI              │
+            ▼                                  │                            │
+┌───────────────────────┐                      │                            │
+│   Ngrok Tunnel        │                      │                            │
+│   :8000 → local       │                      │                            │
+└───────────┬───────────┘                      │                            │
+            ▼                                  │                            │
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│                        MPWR Reservation Agent                                     │
+│                                                                                   │
+│  webhook_server.py ──► webhook_sniffer/ ──► webhook_processor.py                  │
+│         │                                         │                               │
+│         ▼                                         ▼                               │
+│  webhook_cache/ ──► main.py (APScheduler) ──► mpowr_creator_bot.py ──► MPOWR     │
+│                          │                        │                               │
+│                          ▼                        ▼                               │
+│                   data_mapper.py            slack_notifier.py ──────────► Slack    │
+│                          │                                                        │
+│                          ▼                                                        │
+│                     sheets.py ──► Google Sheets (3 sheets)                        │
+└───────────────────────────────────────────────────────────────────────────────────┘</pre>
+  </section>
+
+  <!-- DATA FLOWS -->
+  <section id="flow-create">
+    <h2><span class="section-icon">📋</span> Data Flows</h2>
+
+    <div class="flow-card">
+      <h4>🆕 New Booking (Creation)</h4>
+      <div class="flow-step"><span class="flow-num">1</span><p>Customer books on TripWorks</p></div>
+      <div class="flow-step"><span class="flow-num">2</span><p>TripWorks fires webhook POST → ngrok → <code>webhook_server.py</code> saves to both <code>webhook_cache/</code> and <code>webhook_sniffer/</code></p></div>
+      <div class="flow-step"><span class="flow-num">3</span><p>Zapier detects TripWorks event, appends row to Google Sheet (Zapier Feed)</p></div>
+      <div class="flow-step"><span class="flow-num">4</span><p><code>main.py</code> scheduler triggers <code>run_creator_batch()</code> every 5 minutes</p></div>
+      <div class="flow-step"><span class="flow-num">5</span><p><code>sheets.py</code> scans Google Sheet for rows without MPWR Confirmation Number</p></div>
+      <div class="flow-step"><span class="flow-num">6</span><p><code>data_mapper.py</code> translates row into MPOWR form values (activity, vehicle, dates, pricing)</p></div>
+      <div class="flow-step"><span class="flow-num">7</span><p><code>mpowr_creator_bot.py</code> opens Chromium, logs into MPOWR, fills the form, and submits</p></div>
+      <div class="flow-step"><span class="flow-num">8</span><p>Bot extracts MPOWR Confirmation ID → writes to Secondary Tracker + V2 Guest Database</p></div>
+      <div class="flow-step"><span class="flow-num">9</span><p>Slack success notification sent with pre-submit screenshot</p></div>
+    </div>
+  </section>
+
+  <section id="flow-cancel">
+    <div class="flow-card" style="border-left-color: var(--danger);">
+      <h4>🚫 Cancellation</h4>
+      <div class="flow-step"><span class="flow-num">1</span><p>Staff or customer cancels the booking in TripWorks</p></div>
+      <div class="flow-step"><span class="flow-num">2</span><p>TripWorks fires webhook with <code>status.slug = "cancelled"</code></p></div>
+      <div class="flow-step"><span class="flow-num">3</span><p><code>webhook_processor.py</code> looks up the MPWR Confirmation Number in V2 Guest Database</p></div>
+      <div class="flow-step"><span class="flow-num">4</span><p>Bot navigates to MPOWR order page → clicks <strong>Actions → Cancel Reservation</strong></p></div>
+      <div class="flow-step"><span class="flow-num">5</span><p>Selects <strong>"Customer Reason"</strong> and ensures <strong>"Charge Cancellation Fee" is UNCHECKED</strong></p></div>
+      <div class="flow-step"><span class="flow-num">6</span><p>Clicks <strong>Cancel Order</strong> → updates V2 Dashboard (Status = "Canceled") → sends Slack alert</p></div>
+    </div>
+  </section>
+
+  <section id="flow-update">
+    <div class="flow-card" style="border-left-color: var(--warning);">
+      <h4>🔄 Reschedule / Update</h4>
+      <div class="flow-step"><span class="flow-num">1</span><p>Staff or customer changes dates, vehicles, or activity type in TripWorks</p></div>
+      <div class="flow-step"><span class="flow-num">2</span><p>TripWorks fires webhook with <code>status.slug = "booked"</code> (same as creation!)</p></div>
+      <div class="flow-step"><span class="flow-num">3</span><p><code>webhook_processor.py</code> finds an existing MPWR ID → classifies as UPDATE, not creation</p></div>
+      <div class="flow-step"><span class="flow-num">4</span><p>Bot navigates to order → clicks <strong>Actions → Reschedule</strong></p></div>
+      <div class="flow-step"><span class="flow-num">5</span><p>Sets new activity listing, dates, and time</p></div>
+      <div class="flow-step"><span class="flow-num">6</span><p><strong>"The Great Reset"</strong> — zeros ALL vehicle dropdowns to prevent double-booking</p></div>
+      <div class="flow-step"><span class="flow-num">7</span><p>Applies new vehicle type, quantity, and overrides price → clicks <strong>Update Reservation</strong></p></div>
+    </div>
+  </section>
+
+  <section id="flow-payment">
+    <div class="flow-card" style="border-left-color: var(--success);">
+      <h4>💰 Payment Settlement</h4>
+      <div class="flow-step"><span class="flow-num">1</span><p>Customer pays remaining balance on TripWorks</p></div>
+      <div class="flow-step"><span class="flow-num">2</span><p><code>webhook_processor.py</code> checks if <code>trip.due == 0</code> (paid in full)</p></div>
+      <div class="flow-step"><span class="flow-num">3</span><p>If partial → <strong>SKIP</strong> (Slack notifies team). If paid in full → proceed</p></div>
+      <div class="flow-step"><span class="flow-num">4</span><p>Bot clicks <strong>Actions → New Charge → Make Payment → Cash → Collect</strong></p></div>
+      <div class="flow-step"><span class="flow-num">5</span><p>Updates V2 Dashboard: Amount Due = $0.00, Status = "Paid" → sends Slack alert</p></div>
+    </div>
+
+    <div class="alert alert-warning">
+      <span class="alert-icon">⚠️</span>
+      <div><p><strong>Important:</strong> We NEVER enter customer card information into MPOWR. All settlements are processed through the "Cash" option only. Partial payments are always skipped.</p></div>
+    </div>
+  </section>
+
+  <!-- MODULES -->
+  <section id="mod-main">
+    <h2><span class="section-icon">📦</span> Modules</h2>
+
+    <h3>🎯 main.py — Daemon Orchestrator</h3>
+    <p>The entry point for the entire system. Uses <strong>APScheduler</strong> with Denver timezone to run jobs on cron schedules.</p>
+
+    <table>
+      <thead><tr><th>Job</th><th>Schedule</th><th>Function</th></tr></thead>
+      <tbody>
+        <tr><td>Creator (Peak)</td><td>Every 5 min, 7AM–6:59PM</td><td><code>run_creator_safely()</code></td></tr>
+        <tr><td>Creator (Off-Peak)</td><td>Every 60 min, 7PM–6:59AM</td><td><code>run_creator_safely()</code></td></tr>
+        <tr><td>Ride Checker</td><td>Every 30 min</td><td><code>run_ride_checker()</code></td></tr>
+      </tbody>
+    </table>
+
+    <p>Each <code>run_creator_safely()</code> cycle first sweeps webhooks for cancel/pay/update events, then scans Google Sheets for new bookings.</p>
+  </section>
+
+  <section id="mod-webhook-server">
+    <h3>📡 webhook_server.py — HTTP Listener</h3>
+    <p>Lightweight HTTP server on <strong>port 8000</strong>, exposed via ngrok. On every POST:</p>
+    <ol style="margin: 12px 0; padding-left: 24px; color: var(--text-secondary); font-size: 14px;">
+      <li>Parses JSON payload</li>
+      <li>Saves to <code>webhook_cache/{conf_code}.json</code> (legacy compatibility)</li>
+      <li>Saves to <code>webhook_sniffer/{timestamp}_{conf_code}.json</code> with full HTTP headers</li>
+      <li>Returns HTTP 200</li>
+    </ol>
+  </section>
+
+  <section id="mod-webhook-processor">
+    <h3>🧠 webhook_processor.py — Event Router</h3>
+    <p>The brain of the webhook system. Classifies every incoming event and routes it to the correct bot action.</p>
+    <pre>
+For each .json file in webhook_sniffer/:
+  1. Hash payload (MD5) → skip if already processed
+  2. Extract TW Confirmation Code
+  3. Early-classify: Payment? Cancellation?
+  4. Look up MPWR ID in V2 Guest Database
+  5. No MPWR ID + Payment/Cancel → pending_retry/
+  6. Has MPWR ID → route to settle/cancel/update
+  7. Record hash → move to processed/</pre>
+  </section>
+
+  <section id="mod-bot">
+    <h3>🤖 mpowr_creator_bot.py — Playwright Engine</h3>
+    <p>The largest module (~2050 lines). Controls a headless Chromium browser.</p>
+
+    <table>
+      <thead><tr><th>Method</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>create_batch(payloads)</code></td><td>Creates multiple reservations sequentially</td></tr>
+        <tr><td><code>create_reservation(payload)</code></td><td>Fills and submits the /orders/create form</td></tr>
+        <tr><td><code>cancel_reservation(mpwr_id)</code></td><td>Actions → Cancel → Customer Reason → $0 fee</td></tr>
+        <tr><td><code>settle_payment(mpwr_id)</code></td><td>Actions → New Charge → Cash → Collect</td></tr>
+        <tr><td><code>update_reservation(mpwr_id, payload)</code></td><td>Actions → Reschedule → Great Reset → Update</td></tr>
+      </tbody>
+    </table>
+
+    <div class="alert alert-info">
+      <span class="alert-icon">🔄</span>
+      <div><p><strong>"The Great Reset":</strong> When editing a reservation, the bot sets ALL vehicle quantity dropdowns to 0 before applying new selections. This prevents double-booking when a customer switches vehicle types. Includes a keyboard-input fallback if MPOWR ever replaces native HTML selects.</p></div>
+    </div>
+  </section>
+
+  <section id="mod-mapper">
+    <h3>🗺️ data_mapper.py — Translation Layer</h3>
+    <p>875 lines of mapping tables that translate between TripWorks terminology and MPOWR form values. Handles activities, vehicles, ticket types, pricing, time slots, guide add-ons, and insurance.</p>
+
+    <h4>Intentional Skip Rules</h4>
+    <p>The bot skips (and Slack-notifies) these reservation types:</p>
+    <ul style="margin: 8px 0 16px; padding-left: 24px; color: var(--text-secondary); font-size: 13px; line-height: 2;">
+      <li>Test reservations (name contains "test")</li>
+      <li>TripAdvisor Exclusive activities (managed natively)</li>
+      <li>Pro XPerience activities (no MPOWR inventory needed)</li>
+      <li>Guide Car Passengers/Riders only (no vehicle allocation)</li>
+    </ul>
+  </section>
+
+  <section id="mod-sheets">
+    <h3>📊 sheets.py — Google Sheets Integration</h3>
+    <p>Manages <strong>three</strong> separate Google Sheets:</p>
+
+    <table>
+      <thead><tr><th>Sheet</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Zapier Feed</strong></td><td>Primary data source (read-only by bot)</td></tr>
+        <tr><td><strong>Secondary Tracker</strong></td><td>Tracks which TW Confirmations have been processed</td></tr>
+        <tr><td><strong>V2 Guest Database</strong></td><td>47-column normalized database (the operational dashboard)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="mod-slack">
+    <h3>💬 slack_notifier.py — Team Notifications</h3>
+    <p>Sends rich Block Kit messages to Slack via Bot Token (preferred) or Incoming Webhook (fallback). Falls back to console if neither is configured. Supports screenshot uploads via Slack's modern 3-step file upload API.</p>
+  </section>
+
+  <section id="mod-other">
+    <h3>📦 Other Modules</h3>
+
+    <table>
+      <thead><tr><th>Module</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>mpowr_login.py</code></td><td>Shared SSO authentication — fill username/password, handle pre-SSO gateway, retry up to 2×</td></tr>
+        <tr><td><code>bot_logger.py</code></td><td>Dual-output logger: console (human-readable) + JSON-lines file. Rotates daily, 30-day retention</td></tr>
+        <tr><td><code>mpwr_ride_checker.py</code></td><td>Every 30 min, scrapes MPOWR for rental status pill changes (Checked In → Returned)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- MAPPING TABLES -->
+  <section id="mapping">
+    <h2><span class="section-icon">🗂️</span> Mapping Tables</h2>
+
+    <h3>Tours</h3>
+    <table>
+      <thead><tr><th>TripWorks Activity</th><th>MPOWR Listing</th><th>Vehicle</th></tr></thead>
+      <tbody>
+        <tr><td>Gateway to Hell's Revenge and Fins N' Things</td><td>Hell's Revenge</td><td>RZR XP4 S</td></tr>
+        <tr><td>Hell's Revenge - Pro R Ultimate Experience</td><td>Hell's Revenge</td><td>RZR Pro R</td></tr>
+        <tr><td>Hell's Revenge and Fins N' Things - Private</td><td>Hell's Revenge</td><td>RZR XP4 S</td></tr>
+        <tr><td>Private Pro R - Hell's Revenge</td><td>Hell's Revenge</td><td>RZR Pro R</td></tr>
+        <tr><td>Poison Spider Mesa Tour</td><td>Poison Spider Mesa</td><td>(from ticket type)</td></tr>
+        <tr><td>Moab Discovery Tour</td><td>Moab Discovery Tour</td><td>XPEDITION XP 5</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Rentals</h3>
+    <table>
+      <thead><tr><th>Duration</th><th>MPOWR Listing</th></tr></thead>
+      <tbody>
+        <tr><td>3 Hours / 3 Hour / 3hr</td><td>3 Hour Self-Guided Adventure Rental</td></tr>
+        <tr><td>Half-Day Up to 5 Hours</td><td>Half-Day Self-Guided Rental</td></tr>
+        <tr><td>Full-Day Up to 9 Hours</td><td>Full-Day Adventure</td></tr>
+        <tr><td>24 Hours</td><td>24 Hour Rental</td></tr>
+        <tr><td>2-Day through 7-Day</td><td>Multi-Day Adventure Rental</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Vehicles</h3>
+    <table>
+      <thead><tr><th>MPOWR Card Text</th><th>Seats</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>RZR XP4 S</td><td>4</td><td>Default for tours</td></tr>
+        <tr><td>RZR XP S</td><td>2</td><td>Rentals only</td></tr>
+        <tr><td>RZR Pro R</td><td>2</td><td>Premium tours</td></tr>
+        <tr><td>RZR PRO S / PRO S4</td><td>2 / 4</td><td>"Turbo Pro S" in TripWorks</td></tr>
+        <tr><td>XPEDITION XP 5 NorthStar</td><td>5</td><td>Moab Discovery only</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- SLACK REFERENCE -->
+  <section id="slack-ref">
+    <h2><span class="section-icon">🔔</span> Slack Notification Reference</h2>
+    <table>
+      <thead><tr><th style="width:50px">Icon</th><th>Tag</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><span class="slack-icon si-success">✅</span></td><td><code>[SYSTEM AUTOMATION]</code></td><td>Operation completed successfully</td></tr>
+        <tr><td><span class="slack-icon si-danger">❌</span></td><td><code>Auto-Creation Failed</code></td><td>Creation failed — manual action needed</td></tr>
+        <tr><td><span class="slack-icon si-danger">🚨</span></td><td><code>[MPOWR CANCEL FAILURE]</code></td><td>Cancellation failed — inventory at risk</td></tr>
+        <tr><td><span class="slack-icon si-warning">⚠️</span></td><td><code>[PAYMENT / EDIT FAILURE]</code></td><td>Payment or Update failed</td></tr>
+        <tr><td><span class="slack-icon si-skip">⏭️</span></td><td><code>[SKIPPED]</code></td><td>Intentionally skipped (partial payment, mapping failure)</td></tr>
+        <tr><td><span class="slack-icon si-skip">⏭️</span></td><td><code>[INTENTIONAL OPERATION]</code></td><td>Cancel or Payment executed as designed</td></tr>
+        <tr><td><span class="slack-icon si-info">🧪</span></td><td><code>DRY RUN</code></td><td>Form filled but not submitted</td></tr>
+        <tr><td><span class="slack-icon si-warning">💰</span></td><td><code>Price Discrepancy</code></td><td>MPOWR vs TripWorks price mismatch detected</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- SAFETY -->
+  <section id="safety">
+    <h2><span class="section-icon">🛡️</span> Safety Mechanisms</h2>
+    <div class="safety-grid">
+      <div class="safety-card">
+        <h4>🔒 Webhook Deduplication</h4>
+        <p>TripWorks sends 5-10 identical webhooks per event. MD5 hash comparison prevents duplicate processing.</p>
+      </div>
+      <div class="safety-card">
+        <h4>⏳ Race Condition Protection</h4>
+        <p>Cancel/Payment webhooks that arrive before MPWR ID exists go to pending_retry/ and are re-evaluated on the next cycle.</p>
+      </div>
+      <div class="safety-card">
+        <h4>🔄 The Great Reset</h4>
+        <p>During updates, ALL vehicle dropdowns are zeroed before applying new selections, preventing accidental double-bookings.</p>
+      </div>
+      <div class="safety-card">
+        <h4>💲 Fee Guard</h4>
+        <p>The cancellation fee checkbox is explicitly verified as UNCHECKED. If already unchecked (default), no action is taken.</p>
+      </div>
+      <div class="safety-card">
+        <h4>📊 Batch Cap (20/cycle)</h4>
+        <p>Maximum 20 reservations per 5-minute cycle prevents session timeouts and runaway API consumption.</p>
+      </div>
+      <div class="safety-card">
+        <h4>📅 Past Date Filter</h4>
+        <p>Reservations with past Activity Dates are auto-skipped — no ghost bookings get created.</p>
+      </div>
+      <div class="safety-card">
+        <h4>🛑 Circuit Breaker</h4>
+        <p>After 3 consecutive failures, the bot aborts the remaining batch queue to prevent cascading errors.</p>
+      </div>
+      <div class="safety-card">
+        <h4>📸 Screenshot Forensics</h4>
+        <p>Every error captures a full-page screenshot. Auto-cleaned after 7 days.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONFIG -->
+  <section id="config">
+    <h2><span class="section-icon">⚙️</span> Configuration (.env)</h2>
+    <table>
+      <thead><tr><th>Variable</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td class="env-var">MPOWR_EMAIL</td><td>MPOWR login email</td></tr>
+        <tr><td class="env-var">MPOWR_PASSWORD</td><td>MPOWR login password</td></tr>
+        <tr><td class="env-var">GOOGLE_APPLICATION_CREDENTIALS</td><td>Path to Google OAuth client secret JSON</td></tr>
+        <tr><td class="env-var">GOOGLE_SHEET_ID</td><td>Zapier feed sheet (primary, read-only)</td></tr>
+        <tr><td class="env-var">SECONDARY_SHEET_ID</td><td>Bot confirmation tracker</td></tr>
+        <tr><td class="env-var">DASHBOARD_SHEET_ID</td><td>V2 Guest Database (47-column)</td></tr>
+        <tr><td class="env-var">SLACK_WEBHOOK_URL</td><td>Slack incoming webhook URL</td></tr>
+        <tr><td class="env-var">SLACK_BOT_TOKEN</td><td>Slack bot token (for file uploads)</td></tr>
+        <tr><td class="env-var">SLACK_USER_ID</td><td>Slack user ID for DMs</td></tr>
+        <tr><td class="env-var">DRY_RUN</td><td>"true" fills forms but never submits</td></tr>
+        <tr><td class="env-var">CREATOR_HEADLESS</td><td>"true" runs Chromium without visible window</td></tr>
+        <tr><td class="env-var">START_ROW</td><td>Row to start scanning from in Google Sheet</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- FILES -->
+  <section id="files">
+    <h2><span class="section-icon">📁</span> File Structure</h2>
+    <div class="file-tree">
+      <span class="dir">MPWR_Reservation_Agent/</span><br>
+      ├── .env <span class="comment">← Credentials (never commit)</span><br>
+      ├── Run_Live_Bot.bat <span class="comment">← One-click Windows launcher</span><br>
+      ├── main.py <span class="comment">← Daemon entry point & scheduler</span><br>
+      ├── webhook_server.py <span class="comment">← HTTP listener on port 8000</span><br>
+      ├── webhook_processor.py <span class="comment">← Smart event router</span><br>
+      ├── mpowr_creator_bot.py <span class="comment">← Playwright automation engine</span><br>
+      ├── mpowr_login.py <span class="comment">← MPOWR SSO authentication</span><br>
+      ├── data_mapper.py <span class="comment">← TripWorks ↔ MPOWR translation</span><br>
+      ├── sheets.py <span class="comment">← Google Sheets integration (3 sheets)</span><br>
+      ├── slack_notifier.py <span class="comment">← Slack Block Kit notifications</span><br>
+      ├── bot_logger.py <span class="comment">← JSON-lines logger with rotation</span><br>
+      ├── mpwr_ride_checker.py <span class="comment">← Rental status monitor</span><br>
+      ├── requirements.txt <span class="comment">← Python dependencies</span><br>
+      ├── <span class="dir">logs/</span> <span class="comment">← JSON logs (rotated daily, 30d)</span><br>
+      ├── <span class="dir">screenshots/</span> <span class="comment">← Error screenshots (cleaned weekly)</span><br>
+      ├── <span class="dir">webhook_cache/</span> <span class="comment">← Legacy webhook JSON</span><br>
+      └── <span class="dir">webhook_sniffer/</span> <span class="comment">← All webhook payloads</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;├── <span class="dir">processed/</span> <span class="comment">← Successfully handled</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── processed_hashes.txt <span class="comment">← MD5 dedup DB</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;└── <span class="dir">pending_retry/</span> <span class="comment">← Race condition queue</span>
+    </div>
+  </section>
+
+  <!-- STARTUP -->
+  <section id="startup">
+    <h2><span class="section-icon">🚀</span> Startup & Deployment</h2>
+
+    <h3>First-Time Setup</h3>
+    <ol style="margin: 12px 0 24px; padding-left: 24px; color: var(--text-secondary); font-size: 14px; line-height: 2.2;">
+      <li>Clone repository to local Windows machine</li>
+      <li>Create <code>.env</code> file with all required variables (see Configuration section)</li>
+      <li>Place Google OAuth <code>client_secret.json</code> in the project root</li>
+      <li>Double-click <code>Run_Live_Bot.bat</code> — it auto-creates the venv, installs deps & Chromium</li>
+    </ol>
+
+    <h3>Daily Operation</h3>
+    <p>Double-click <code>Run_Live_Bot.bat</code>. The system automatically:</p>
+    <ol style="margin: 8px 0 16px; padding-left: 24px; color: var(--text-secondary); font-size: 14px; line-height: 2.2;">
+      <li>Activates the Python virtual environment</li>
+      <li>Starts the <strong>ngrok tunnel</strong> (persistent domain)</li>
+      <li>Starts the <strong>webhook server</strong> on port 8000</li>
+      <li>Starts the <strong>main daemon</strong> with APScheduler</li>
+      <li>Runs an initial boot sweep immediately, then operates on cron schedule</li>
+    </ol>
+
+    <div class="alert alert-success">
+      <span class="alert-icon">✅</span>
+      <div><p><strong>To stop:</strong> Close the terminal window or press <code>Ctrl+C</code>.</p></div>
+    </div>
+  </section>
+
+  <!-- TROUBLESHOOTING -->
+  <section id="troubleshooting">
+    <h2><span class="section-icon">🔧</span> Troubleshooting</h2>
+    <table>
+      <thead><tr><th>Symptom</th><th>Likely Cause</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td>No Slack notifications</td><td>.env missing Slack vars</td><td>Add SLACK_WEBHOOK_URL and/or SLACK_BOT_TOKEN</td></tr>
+        <tr><td>"No pending creations" every cycle</td><td>START_ROW too high or all processed</td><td>Check START_ROW in .env and Secondary Sheet</td></tr>
+        <tr><td>Bot creates old reservations</td><td>START_ROW not set correctly</td><td>Set to current row count + 1</td></tr>
+        <tr><td>Login fails repeatedly</td><td>MPOWR changed SSO flow</td><td>Update selectors in mpowr_login.py</td></tr>
+        <tr><td>Wrong vehicle selected</td><td>New model added</td><td>Update VEHICLE_MODEL_MAP in data_mapper.py</td></tr>
+        <tr><td>Webhook stuck in retry</td><td>MPWR ID not created yet</td><td>Wait for next cycle or manually move file</td></tr>
+        <tr><td>Google Sheets 429 errors</td><td>API quota exceeded</td><td>execute_with_backoff() handles automatically</td></tr>
+        <tr><td>Server not receiving</td><td>Ngrok tunnel disconnected</td><td>Restart Run_Live_Bot.bat</td></tr>
+        <tr><td>Duplicate Slack messages</td><td>TripWorks webhook spam</td><td>Check processed_hashes.txt in processed/</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- LIMITATIONS -->
+  <section id="limitations">
+    <h2><span class="section-icon">⚠️</span> Known Limitations</h2>
+    <div class="alert alert-warning">
+      <span class="alert-icon">1️⃣</span>
+      <div><p><strong>MPOWR UI Sensitivity:</strong> All Playwright automation relies on specific button text and CSS selectors. If Polaris updates the MPOWR interface, selectors may need updating.</p></div>
+    </div>
+    <div class="alert alert-warning">
+      <span class="alert-icon">2️⃣</span>
+      <div><p><strong>Single Machine:</strong> The system runs on one local Windows machine. If the machine is off, webhooks are lost after the ngrok tunnel disconnects.</p></div>
+    </div>
+    <div class="alert alert-warning">
+      <span class="alert-icon">3️⃣</span>
+      <div><p><strong>Undocumented API:</strong> All TripWorks webhook event classification is reverse-engineered. Payload structures may change without notice.</p></div>
+    </div>
+    <div class="alert alert-info">
+      <span class="alert-icon">4️⃣</span>
+      <div><p><strong>Hash file growth:</strong> processed_hashes.txt grows indefinitely. Consider periodic cleanup of entries older than 30 days.</p></div>
+    </div>
+    <div class="alert alert-info">
+      <span class="alert-icon">5️⃣</span>
+      <div><p><strong>No multi-vehicle update:</strong> The update path assumes a single vehicle type per reservation. Complex multi-model swaps are not yet supported.</p></div>
+    </div>
+  </section>
+
+  <footer style="margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border); text-align: center; color: var(--text-muted); font-size: 12px;">
+    <p>MPWR Reservation Agent v2.0 · Last updated April 16, 2026 · Epic 4x4 Adventures Engineering</p>
+  </footer>
+
+</main>
+
+</body>
+</html>

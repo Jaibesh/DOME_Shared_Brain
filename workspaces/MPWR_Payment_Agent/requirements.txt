@@ -1,0 +1,7 @@
+playwright
+supabase
+python-dotenv
+pytz
+apscheduler
+greenlet
+requests

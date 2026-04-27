@@ -1,0 +1,10 @@
+playwright
+gspread
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+requests
+python-dotenv
+pytz
+supabase==2.28.3
+apscheduler

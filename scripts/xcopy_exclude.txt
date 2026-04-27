@@ -1,0 +1,10 @@
+venv\
+.venv\
+__pycache__\
+node_modules\
+.git\
+screenshots\
+logs\
+webhook_cache\
+webhook_sniffer\
+.env

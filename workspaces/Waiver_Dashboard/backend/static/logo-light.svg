@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 100" fill="none">
+  <!-- EPIC -->
+  <text x="0" y="72" font-family="'Bebas Neue', 'Arial Black', sans-serif" font-weight="bold" font-size="88" fill="#E81B1B" letter-spacing="4">EPIC</text>
+  <!-- 4X4 -->
+  <text x="240" y="72" font-family="'Bebas Neue', 'Arial Black', sans-serif" font-weight="bold" font-size="88" fill="#FFFFFF" letter-spacing="2">4</text>
+  <text x="295" y="72" font-family="'Bebas Neue', 'Arial Black', sans-serif" font-weight="bold" font-size="88" fill="#E81B1B" letter-spacing="2">X</text>
+  <text x="350" y="72" font-family="'Bebas Neue', 'Arial Black', sans-serif" font-weight="bold" font-size="88" fill="#FFFFFF" letter-spacing="2">4</text>
+  <!-- ADVENTURES -->
+  <text x="0" y="98" font-family="'Bebas Neue', 'Arial Black', sans-serif" font-weight="400" font-size="28" fill="#FFFFFF" letter-spacing="16">ADVENTURES</text>
+</svg>

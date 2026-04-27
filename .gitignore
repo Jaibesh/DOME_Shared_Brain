@@ -32,3 +32,16 @@ memory/cold/
 # Large/sensitive files
 *.sqlite
 *.db
+
+# Virtual environments
+venv/
+.venv/
+
+# Node
+node_modules/
+
+# Runtime artifacts
+screenshots/
+webhook_cache/
+webhook_sniffer/
+logs/

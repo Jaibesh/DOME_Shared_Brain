@@ -1,0 +1,38 @@
+# Environment & Credentials (SEC-1)
+.env
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+
+# ARCH-4: Sensitive network capture files
+*.har
+mpowr_html_dump.html
+mpowr_form_selectors.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+
+# IDE
+.vscode/
+.idea/
+
+# Pytest
+.pytest_cache/
+
+# Bot artifacts
+backend/screenshots/
+backend/logs/
+
+# OS
+.DS_Store
+Thumbs.db

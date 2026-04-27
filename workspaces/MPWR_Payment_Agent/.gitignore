@@ -1,0 +1,7 @@
+# MPWR Payment Agent
+venv/
+__pycache__/
+*.pyc
+logs/
+screenshots/
+.env
