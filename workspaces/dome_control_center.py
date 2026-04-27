@@ -355,12 +355,24 @@ class DOMEControlCenter(ctk.CTk):
         )
         self._clear_logs_btn.place(relx=1.0, rely=0.0, x=-15, y=10, anchor="ne")
 
+        # Copy logs button
+        self._copy_logs_btn = ctk.CTkButton(
+            log_container, text="📋 Copy", fg_color="#30363d", hover_color="#484f58",
+            height=24, width=70, corner_radius=4, font=ctk.CTkFont(size=11),
+            command=self._copy_logs,
+        )
+        self._copy_logs_btn.place(relx=1.0, rely=0.0, x=-95, y=10, anchor="ne")
+
         # Configure text tags for color coding
         self._log_text._textbox.tag_configure("success", foreground=TEXT_SUCCESS)
         self._log_text._textbox.tag_configure("error", foreground=TEXT_ERROR)
         self._log_text._textbox.tag_configure("warning", foreground=TEXT_WARNING)
         self._log_text._textbox.tag_configure("info", foreground=TEXT_PRIMARY)
         self._log_text._textbox.tag_configure("control", foreground="#58a6ff")
+
+        # Bind copy shortcuts
+        self._log_text.bind("<Control-c>", lambda e: self._copy_logs())
+        self._log_text.bind("<Command-c>", lambda e: self._copy_logs())
 
         # ── Bottom Action Bar ────────────────────────────────────────────
         action_bar = ctk.CTkFrame(self, fg_color=BG_CARD, corner_radius=0, height=50)
@@ -587,6 +599,21 @@ class DOMEControlCenter(ctk.CTk):
         agent.log_buffer.clear()
         agent.log_buffer.append("[Control Center] Logs cleared.")
         self._update_log_viewer()
+
+    def _copy_logs(self):
+        """Copy logs from the text widget to the clipboard."""
+        try:
+            # Try to get selected text first
+            selected = self._log_text._textbox.get("sel.first", "sel.last")
+            text_to_copy = selected
+        except Exception:
+            # No selection, copy all
+            text_to_copy = self._log_text.get("1.0", "end-1c")
+        
+        if text_to_copy:
+            self.clipboard_clear()
+            self.clipboard_append(text_to_copy)
+            self.update() # Keep clipboard updated
 
     def _start_all(self):
         for i in range(len(self.agents)):
