@@ -10,12 +10,12 @@ import os
 import sys
 import time
 from datetime import datetime
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 from webhook_processor import process_webhooks
 from bot_logger import get_bot_logger
 
-load_dotenv()
+load_dotenv(find_dotenv())
 log = get_bot_logger()
 
 # Check for required .env vars

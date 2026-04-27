@@ -5,9 +5,9 @@ import os
 import time
 from datetime import datetime
 import pytz
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-load_dotenv()
+load_dotenv(find_dotenv())
 
 from slack_notifier import SlackNotifier
 from bot_logger import get_bot_logger

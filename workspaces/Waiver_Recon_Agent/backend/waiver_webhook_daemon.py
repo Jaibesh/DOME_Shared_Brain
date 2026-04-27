@@ -17,12 +17,12 @@ import re
 from datetime import datetime, timedelta
 
 import pytz
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 from waiver_link_storage import get_supabase
 from slack_notifier import SlackNotifier
 
-load_dotenv()
+load_dotenv(find_dotenv())
 MDT = pytz.timezone("America/Denver")
 
 POLL_INTERVAL = 60  # Poll every 60 seconds

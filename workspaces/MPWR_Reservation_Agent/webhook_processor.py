@@ -160,8 +160,8 @@ def process_webhooks():
                         
                         log.info(f"  -> NEW BOOKING detected for {tw_conf}. Using webhook-first creation...")
                         
-                        from data_mapper import build_payloads_from_webhook
-                        from data_mapper import map_legacy_to_dashboard
+                        from shared.tripworks_mapper import build_payloads_from_webhook
+                        from shared.tripworks_mapper import map_legacy_to_dashboard
                         from pricing import split_subtotal
                         
                         # Build payloads from clean webhook data (supports mixed bookings)

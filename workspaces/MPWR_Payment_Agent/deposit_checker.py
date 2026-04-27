@@ -31,6 +31,7 @@ def get_today_str(tz_name="America/Denver"):
     return now.strftime("%Y-%m-%d")
 
 _alerted_deposits = set()
+_alerted_overdue = set()
 
 def check_upcoming_deposits():
     """
@@ -176,5 +177,77 @@ def check_upcoming_deposits():
         finally:
             browser.close()
 
+def check_overdue_rentals():
+    """
+    Finds rentals that are On Ride / Rental Out and >20 mins past their return time.
+    Sends a Slack alert so the team can call the customer or start recovery.
+    """
+    global _alerted_overdue
+    
+    log.info("Checking for overdue rentals...")
+    supabase = get_supabase()
+    today_str = get_today_str()
+
+    try:
+        # Fetch all rentals for today that are not Returned
+        resp = supabase.table("reservations") \
+            .select("tw_confirmation, mpwr_number, guest_name, rental_return_time, rental_status, tw_status") \
+            .eq("booking_type", "Rental") \
+            .neq("rental_status", "Returned") \
+            .eq("activity_date", today_str) \
+            .execute()
+        
+        records = resp.data
+    except Exception as e:
+        log.error(f"Failed to query Supabase for overdue rentals: {e}")
+        return
+
+    if not records:
+        return
+
+    tz = timezone("America/Denver")
+    now = datetime.datetime.now(tz)
+
+    for r in records:
+        tw_conf = r.get("tw_confirmation")
+        tw_status = str(r.get("tw_status") or "")
+        rental_status = str(r.get("rental_status") or "")
+        
+        # Only alert if they are actually out on the ride
+        if tw_status != "Rental Out" and rental_status not in ("On Ride", "OVERDUE"):
+            continue
+
+        return_time_str = r.get("rental_return_time")
+        if not return_time_str:
+            continue
+            
+        try:
+            # Parse return time (e.g., "5:00 PM")
+            dt_time = datetime.datetime.strptime(return_time_str.strip(), "%I:%M %p").time()
+            dt_combined = tz.localize(datetime.datetime.combine(now.date(), dt_time))
+            minutes_late = (now - dt_combined).total_seconds() / 60.0
+            
+            # If past return time by > 20 minutes
+            if minutes_late > 20:
+                if tw_conf not in _alerted_overdue:
+                    log.warning(f"[{tw_conf}] URGENT: Rental is {int(minutes_late)} mins OVERDUE!")
+                    slack.send_overdue_rental_alert(
+                        tw_confirmation=tw_conf,
+                        customer_name=r.get("guest_name", "Unknown"),
+                        mpowr_id=r.get("mpwr_number", "Unknown"),
+                        minutes_late=int(minutes_late),
+                        return_time=return_time_str
+                    )
+                    _alerted_overdue.add(tw_conf)
+                
+                # Also update DB status to OVERDUE so the dashboard sees it instantly
+                if rental_status != "OVERDUE":
+                    supabase.table("reservations").update({"rental_status": "OVERDUE"}).eq("tw_confirmation", tw_conf).execute()
+                    
+        except Exception as e:
+            log.warning(f"Could not check overdue for '{tw_conf}': {e}")
+
+
 if __name__ == "__main__":
     check_upcoming_deposits()
+    check_overdue_rentals()

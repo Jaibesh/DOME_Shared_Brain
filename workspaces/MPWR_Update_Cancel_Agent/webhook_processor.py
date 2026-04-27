@@ -13,7 +13,7 @@ load_dotenv()
 log = get_bot_logger()
 
 # Maximum time a webhook stays in 'retry' before being marked 'failed'
-RETRY_TTL = timedelta(hours=1)
+RETRY_TTL = timedelta(hours=24)
 
 def _is_retry_expired(row) -> bool:
     """Check if a retry webhook has exceeded its TTL based on created_at."""
@@ -211,7 +211,7 @@ def _delete_reservation(supabase, tw_conf):
 
 
 def _process_update(supabase, row):
-    from data_mapper import extract_update_data
+    from shared.tripworks_mapper import extract_update_data
 
     row_id = row.get("id")
     payload = row.get("payload", {})

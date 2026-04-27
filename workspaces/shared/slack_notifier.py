@@ -37,6 +37,7 @@ class SlackNotifier:
         self.webhook_url = os.getenv("SLACK_WEBHOOK_URL", "")
         self.bot_token = os.getenv("SLACK_BOT_TOKEN", "")
         self.user_id = os.getenv("SLACK_USER_ID", "")
+        self.channel = os.getenv("SLACK_CHANNEL", "")
         self.enabled = bool(self.webhook_url or self.bot_token)
 
         if not self.enabled:
@@ -293,6 +294,23 @@ class SlackNotifier:
         fallback = f"🚨 ON RIDE WITHOUT DEPOSIT: TW {tw_confirmation} (MPOWR #{mpowr_id}) missing ${required_auth:.2f}"
         self._send_message(blocks, fallback)
 
+    def send_overdue_rental_alert(self, tw_confirmation: str, customer_name: str, 
+                                  mpowr_id: str, minutes_late: int, return_time: str):
+        blocks = [
+            {"type": "header", "text": {"type": "plain_text", "text": "⚠️ OVERDUE RENTAL", "emoji": True}},
+            {"type": "section", "text": {"type": "mrkdwn",
+                "text": f"Vehicle for *{customer_name}* is *{minutes_late} minutes* past its return time ({return_time}).\nStatus is still 'Rental Out'."}},
+            {"type": "section", "fields": [
+                {"type": "mrkdwn", "text": f"*Customer:*\n{customer_name}"},
+                {"type": "mrkdwn", "text": f"*TW Conf:*\n{tw_confirmation}"},
+                {"type": "mrkdwn", "text": f"*MPOWR ID:*\n#{mpowr_id}"},
+            ]},
+            self._agent_context(),
+            {"type": "divider"},
+        ]
+        fallback = f"⚠️ OVERDUE RENTAL: {customer_name} ({tw_confirmation}) is {minutes_late} mins late (due at {return_time})."
+        self._send_message(blocks, fallback)
+
     # ═══════════════════════════════════════════════════════════════════════
     # GENERIC / CONVENIENCE
     # ═══════════════════════════════════════════════════════════════════════
@@ -307,8 +325,8 @@ class SlackNotifier:
 
     def _send_message(self, blocks: list | None, text: str,
                        screenshot_path: str | None = None):
-        if self.bot_token and self.user_id:
-            channel = self._get_dm_channel()
+        if self.bot_token:
+            channel = self.channel or self._get_dm_channel()
             if channel:
                 self._post_via_bot(channel, blocks, text, screenshot_path)
                 return

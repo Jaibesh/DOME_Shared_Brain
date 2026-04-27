@@ -1,14 +1,14 @@
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 # Load environment variables FIRST, before importing local modules that might read them on initialization
-load_dotenv()
+load_dotenv(find_dotenv())
 
 import time
 from apscheduler.schedulers.blocking import BlockingScheduler
 from bot_logger import get_bot_logger
 from webhook_processor import process_payment_webhooks
-from deposit_checker import check_upcoming_deposits
+from deposit_checker import check_upcoming_deposits, check_overdue_rentals
 from slack_notifier import slack
 
 log = get_bot_logger()
@@ -33,6 +33,7 @@ def safe_deposit_job():
     log.info("--- Starting Deposit Checking Cycle ---")
     try:
         check_upcoming_deposits()
+        check_overdue_rentals()
     except Exception as e:
         log.error(f"Error in deposit checking job: {e}")
         slack.send_message(f"❌ Payment Agent Deposit Job Failed: {e}")

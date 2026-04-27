@@ -983,11 +983,17 @@ def build_payloads_from_webhook(webhook_json: dict) -> list[dict]:
                         
                 # Deduct TripSafe (TripWorks insurance) from the MPOWR target price
                 if "tripsafe" in addon_name.lower() or "trip safe" in addon_name.lower() or "protection" in addon_name.lower():
-                    if "adventure" not in addon_name.lower(): # don't deduct our own assure
-                        tripsafe_deduction_cents += addon.get("price", 0)
+                    if "adventure" not in addon_name.lower() and "no" not in addon_name.lower(): # don't deduct our own assure
+                        has_tripsafe = True
                         if addon.get("price", 0) > 0:
-                            has_tripsafe = True
+                            tripsafe_deduction_cents += addon.get("price", 0)
         
+        if has_tripsafe and tripsafe_deduction_cents == 0:
+            # TripWorks hides the TripSafe price as $0. It is calculated as 9% of the base subtotal.
+            # subtotal_cents = base_cents * 1.09
+            base_cents = round(subtotal_cents / 1.09)
+            tripsafe_deduction_cents = subtotal_cents - base_cents
+            
         target_price = (subtotal_cents - tripsafe_deduction_cents) / 100.0
         
         insurance_choice = "paid" if has_adventure_assure else "free"
@@ -1092,6 +1098,141 @@ def build_payloads_from_webhook(webhook_json: dict) -> list[dict]:
 # DASHBOARD INTERFACE
 # =============================================================================
 
+def map_legacy_to_dashboard(row: dict, mpwr_conf_number: str, webhook_payload: dict) -> dict:
+    """
+    Translates the legacy Zapier row + Webhook JSON into the strict 47-column Dashboard format.
+    """
+    from datetime import datetime
+
+    # Base payload processing
+    order_id = str(webhook_payload.get("id", row.get("TW Order ID", "")))
+    trip_method = webhook_payload.get("trip_method", {}).get("name", "")
+    
+    sub_total = float(webhook_payload.get("subtotal", 0)) / 100.0 if "subtotal" in webhook_payload else row.get("Sub-Total", 0)
+    total = float(webhook_payload.get("total", 0)) / 100.0 if "total" in webhook_payload else row.get("Total", 0)
+    amount_paid = float(webhook_payload.get("paid", 0)) / 100.0 if "paid" in webhook_payload else 0
+    amount_due = float(webhook_payload.get("due", 0)) / 100.0 if "due" in webhook_payload else 0
+
+    aas_status = "Premium Adventure Assure" if row.get("has_adventure_assure") else "None"
+
+    # Use existing MPOWR mapping string building natively
+    payload = _build_single_payload(row, 0)
+
+    # BUG-4 FIX: If the payload builder returns an error (e.g. TripAdvisor Exclusive,
+    # Guide Car Passenger), fall back to raw row data instead of using garbage values.
+    if payload.get("error"):
+        payload = {
+            "first_name": str(row.get("First Name", "")).strip(),
+            "last_name": str(row.get("Last Name", "")).strip(),
+            "phone": str(row.get("Phone", "")).strip(),
+            "booking_type": determine_booking_type(str(row.get("Activity", ""))),
+            "mpowr_activity": "",
+            "mpowr_vehicle": "",
+            "vehicle_qty": 1,
+            "activity_date": str(row.get("Activity Date", "")).strip().split(" ")[0],
+            "normalized_date": str(row.get("Normalized Date", "")).strip(),
+            "activity_time": str(row.get("Activity Time", "")).strip(),
+            "webhook_email": "",
+            "error": None,
+        }
+
+    party_size = str(row.get("Party Size", "1"))
+    booking_type = payload.get("booking_type", "")
+    is_rental = booking_type.lower() == "rental"
+    
+    # Safely extract TripWorks Notes
+    tw_notes = str(row.get("Notes", ""))
+    for field in webhook_payload.get("custom_field_values", []):
+        field_name = str(field.get("custom_field", {}).get("internal_name", "")).lower()
+        if "notes" in field_name:
+            extracted = field.get("string_value") or field.get("text_value") or str(field.get("value", ""))
+            if extracted and extracted.strip():
+                if tw_notes:
+                    tw_notes += " | " + extracted.strip()
+                else:
+                    tw_notes = extracted.strip()
+    
+    # Safely extract end time
+    end_time = ""
+    trip_orders = webhook_payload.get("trip_orders", [])
+    if trip_orders:
+        ts = trip_orders[0].get("experience_timeslot", {})
+        if ts.get("end_time"):
+            end_time = ts["end_time"]
+            # basic clean up: 17:00:00 -> 17:00
+            if len(end_time.split(":")) == 3:
+                end_time = ":".join(end_time.split(":")[:2])
+    
+    dashboard_row = {
+        "TW Confirmation": str(row.get("TW Confirmation", "")),
+        "TW Order ID": order_id,
+        "First Name": payload.get("first_name", ""),
+        "Last Name": payload.get("last_name", ""),
+        "Email": str(row.get("Email", "")),
+        "Phone": payload.get("phone", ""),
+        
+        "Activity": str(row.get("Activity", "")),
+        "Activity Internal": payload.get("mpowr_activity", ""),
+        "Booking Type": booking_type,
+        "Ticket Type": str(row.get("Ticket Type", "")),
+        
+        "Vehicle Model": payload.get("mpowr_vehicle", ""),
+        "Vehicle Qty": payload.get("vehicle_qty", 1),
+        "Party Size": party_size,
+        
+        "Activity Date": payload.get("activity_date", ""),
+        "Activity Time": payload.get("activity_time", ""),
+        "End Time": end_time, 
+        "Normalized Date": payload.get("normalized_date", ""),
+        "Rental Return Time": end_time,  # V2: Populated post-creation or from End Time
+        
+        "Sub-Total": sub_total,
+        "Total": total,
+        "Amount Paid": amount_paid,
+        "Amount Due": amount_due,
+        
+        "Adventure Assure": aas_status,
+        "Trip Safe": "Purchased" if row.get("has_tripsafe") else "Declined",
+        "Deposit Status": "Due" if amount_due > 0 else "Collected",
+        "Payment Collected By": "",
+        "Payment Notes": "",
+        
+        "MPWR Confirmation Number": mpwr_conf_number,
+        "MPWR Waiver Link": "",  # Populated by standalone Waiver Link Scraper after creation
+        "MPWR Status": "Created" if mpwr_conf_number else "Error",
+        "Webhook Email": payload.get("webhook_email", ""),
+        "Primary Rider": f"{payload.get('first_name', '')} {payload.get('last_name', '')}".strip(),
+        
+        "Epic Waivers Expected": party_size,
+        "Epic Waivers Complete": payload.get("waivers_complete", 0),
+        "Epic Waiver Names": "",
+        
+        "Polaris Waivers Expected": party_size,
+        "Polaris Waivers Complete": 0,
+        "Polaris Waiver Names": "",
+        
+        "OHV Required": "TRUE" if is_rental else "FALSE",
+        "OHV Permits Expected": str(payload.get("vehicle_qty", 1)) if is_rental else "0",
+        "OHV Permits Uploaded": "0",
+        "OHV Permit Names": "",
+        "OHV Uploaded": "FALSE",
+        "OHV File Path": "",
+        "Rental Status": "",
+        
+        "Checked In": "FALSE",
+        "Checked In At": "",
+        "Checked In By": "",
+        
+        "TW Booking Link": f"https://epic4x4.tripworks.com/trip/{row.get('TW Confirmation', '')}/bookings",
+        "Customer Portal Link": f"https://www.epicreservation.com/portal/{row.get('TW Confirmation', '')}",
+        "Trip Method": trip_method,
+        "Notes": tw_notes,
+        
+        "Created At": datetime.now().isoformat(),
+        "Last Updated": datetime.now().isoformat(),
+    }
+    
+    return dashboard_row
 def extract_update_data(payload: dict) -> dict:
     """
     Extracts relevant update fields from a TripWorks webhook payload
@@ -1135,7 +1276,7 @@ def extract_update_data(payload: dict) -> dict:
         "mpowr_vehicle": p["mpowr_vehicle"]
     }
     
-    supabase_updates = {
+    raw_supabase_updates = {
         "first_name": p["first_name"],
         "last_name": p["last_name"],
         "phone": p["phone"],
@@ -1151,8 +1292,12 @@ def extract_update_data(payload: dict) -> dict:
         "polaris_waivers_expected": p["waivers_expected"],
     }
     
+    # Safe Merge: Strip out empty strings or None so we don't overwrite valid legacy Zapier data
+    supabase_updates = {k: v for k, v in raw_supabase_updates.items() if v != "" and v is not None and v != [] and v != {}}
+    
     return {
         "mpowr_payload": bot_payload,
         "supabase_updates": supabase_updates,
         "error": None
     }
+

@@ -148,17 +148,20 @@ def run_mpowr_scraper(email: str, password: str):
                 if polaris_complete_count > previous_pol_complete:
                     new_waivers_found += (polaris_complete_count - previous_pol_complete)
 
-                # Update Supabase
-                updates = {
-                    "polaris_complete": polaris_complete_count,
-                    "polaris_names": polaris_names,
-                    "last_updated": datetime.now(MDT).isoformat()
-                }
-                
-                # Print status
                 print(f"   -> Found {polaris_complete_count} signed waivers. Names: {polaris_names}")
-                
-                supabase.table("reservations").update(updates).eq("tw_confirmation", tw_conf).execute()
+
+                # Waiver Recon Rule: "Only Increase" logic
+                # Prevent MPOWR UI glitches from dropping the waiver count back down to 0
+                if polaris_complete_count >= previous_pol_complete:
+                    # Update Supabase
+                    updates = {
+                        "polaris_complete": polaris_complete_count,
+                        "polaris_names": polaris_names,
+                        "last_updated": datetime.now(MDT).isoformat()
+                    }
+                    supabase.table("reservations").update(updates).eq("tw_confirmation", tw_conf).execute()
+                else:
+                    print(f"   -> ⚠️ WARNING: Scraped count ({polaris_complete_count}) is lower than previous count ({previous_pol_complete}). Skipping database update to prevent data loss.")
                 
             except Exception as e:
                 err_msg = f"{mpwr_number} (TW: {tw_conf}): {str(e)[:100]}"

@@ -27,7 +27,7 @@ import signal
 from datetime import datetime
 
 import pytz
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 from waiver_link_scraper import WaiverLinkScraper
 from waiver_link_storage import (
@@ -36,7 +36,7 @@ from waiver_link_storage import (
     update_reservation_waiver_link,
 )
 
-load_dotenv()
+load_dotenv(find_dotenv())
 
 MDT = pytz.timezone("America/Denver")
 

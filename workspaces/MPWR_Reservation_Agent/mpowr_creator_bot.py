@@ -19,7 +19,7 @@ import time
 from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright, Page, Browser, BrowserContext
 from mpowr_login import login_to_mpowr, MpowrLoginError
-from data_mapper import (
+from shared.tripworks_mapper import (
     select_best_time_slot,
     parse_subtotal,
 )
@@ -597,8 +597,12 @@ class MpowrCreatorBot:
                 )
 
             print("\n[Step 12] Clicking Submit...")
-            submit = self._find_element("submit_button")
-            if not submit:
+            submit = self._page.get_by_role("button", name="Reserve Now", exact=False).first
+            if submit.count() == 0 or not submit.is_visible(timeout=5000):
+                # Fallback to Submit Payment if it changed
+                submit = self._page.get_by_role("button", name="Submit", exact=False).first
+                
+            if submit.count() == 0:
                 ss = self._screenshot(f"error_no_submit_{tw_conf}")
                 return CreationResult(
                     status="error",
@@ -740,8 +744,11 @@ class MpowrCreatorBot:
             print(f"  Difference: ${abs(mpowr_price - target_price):.2f}")
 
             # Click Actions dropdown (top-right)
-            actions_btn = self._find_element("actions_button", timeout=5000)
-            if not actions_btn:
+            actions_btn = self._page.get_by_role("button", name="Actions", exact=False).first
+            if actions_btn.count() == 0:
+                actions_btn = self._page.get_by_role("button", name="Options", exact=False).first
+                
+            if actions_btn.count() == 0 or not actions_btn.is_visible(timeout=5000):
                 print("  ❌ Actions button not found. Manual override required.")
                 self.slack.send_price_override_alert(
                     customer_name, tw_conf, mpowr_price, target_price, False, "<Pending>"
@@ -752,8 +759,11 @@ class MpowrCreatorBot:
             time.sleep(1)
 
             # Click "Override Price"
-            override_btn = self._find_element("override_price_option", timeout=3000)
-            if not override_btn:
+            override_btn = self._page.get_by_role("menuitem", name="Override Price", exact=False).first
+            if override_btn.count() == 0:
+                override_btn = self._page.get_by_role("menuitem", name="Edit Price", exact=False).first
+                
+            if override_btn.count() == 0 or not override_btn.is_visible(timeout=3000):
                 print("  ❌ Override Price option not found.")
                 self.slack.send_price_override_alert(
                     customer_name, tw_conf, mpowr_price, target_price, False, "<Pending>"
@@ -811,8 +821,11 @@ class MpowrCreatorBot:
                 print(f"  Adjusted vehicle {i+1} price from ${current_val:.2f} to ${new_vehicle_price:.2f} (Diff: ${target_diff:+.2f})")
 
             # Save the override
-            save_btn = self._find_element("price_save_button", timeout=3000)
-            if save_btn:
+            save_btn = self._page.get_by_role("button", name="Apply", exact=False).first
+            if save_btn.count() == 0:
+                save_btn = self._page.get_by_role("button", name="Save", exact=False).first
+                
+            if save_btn.count() > 0 and save_btn.is_visible(timeout=3000):
                 save_btn.click()
                 time.sleep(2)
                 print(f"  ✅ Price overridden successfully.")
@@ -1199,7 +1212,7 @@ class MpowrCreatorBot:
                     return
 
             # No match — use select_best_time_slot logic and pick closest ≤ target
-            from data_mapper import select_best_time_slot
+            from shared.tripworks_mapper import select_best_time_slot
             best = select_best_time_slot(available_times, normalized)
             if best:
                 for i in range(option_count):

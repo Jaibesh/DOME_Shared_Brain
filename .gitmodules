@@ -1,0 +1,3 @@
+[submodule "workspaces/dashboard"]
+	path = workspaces/dashboard
+	url = https://github.com/Jaibesh/epic-waiver-dashboard

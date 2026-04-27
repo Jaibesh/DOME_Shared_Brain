@@ -58,6 +58,7 @@ def get_reservations_needing_waiver_links() -> list[dict]:
             .select("tw_confirmation, mpwr_number, mpwr_waiver_link, activity_date, guest_name") \
             .gte("activity_date", today_iso) \
             .neq("mpwr_number", "") \
+            .or_("mpwr_waiver_link.is.null,mpwr_waiver_link.eq.") \
             .execute()
 
         if not res.data:
