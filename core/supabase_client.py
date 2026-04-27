@@ -14,7 +14,6 @@ Usage:
 import os
 import logging
 from typing import Optional
-from functools import lru_cache
 
 logger = logging.getLogger("dome.supabase")
 
@@ -74,10 +73,14 @@ def get_environment() -> str:
 # ---------------------------------------------------------------------------
 # Supabase Client Factory
 # ---------------------------------------------------------------------------
-@lru_cache(maxsize=1)
+_supabase_client_cache = None
+
 def get_supabase():
     """
     Get or create the singleton Supabase client.
+    
+    Uses a module-level cache instead of @lru_cache so connection
+    failures don't get permanently cached.
     
     Required environment variables:
         DOME_SUPABASE_URL   - Your Supabase project URL
@@ -90,6 +93,10 @@ def get_supabase():
         ValueError: If required environment variables are not set
         ImportError: If supabase-py is not installed
     """
+    global _supabase_client_cache
+    if _supabase_client_cache is not None:
+        return _supabase_client_cache
+    
     supabase = _ensure_supabase()
     
     url = os.environ.get("DOME_SUPABASE_URL")
@@ -105,6 +112,7 @@ def get_supabase():
         )
     
     client = supabase.create_client(url, key)
+    _supabase_client_cache = client
     logger.info(f"[DOME 4.0] Supabase connected: {url[:40]}... (env: {get_environment()})")
     return client
 
@@ -175,12 +183,15 @@ def heartbeat(agent_id: str) -> None:
     """Send a heartbeat to indicate this agent is alive."""
     from datetime import datetime, timezone
     
-    client = get_supabase()
-    client.table("dome_agents").update({
-        "last_heartbeat": datetime.now(timezone.utc).isoformat(),
-        "environment": get_environment(),
-        "status": "active"
-    }).eq("agent_id", agent_id).execute()
+    try:
+        client = get_supabase()
+        client.table("dome_agents").update({
+            "last_heartbeat": datetime.now(timezone.utc).isoformat(),
+            "environment": get_environment(),
+            "status": "active"
+        }).eq("agent_id", agent_id).execute()
+    except Exception as e:
+        logger.warning(f"Heartbeat failed for {agent_id}: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -196,13 +207,17 @@ def log_audit(
     """
     Log an action to the cloud audit trail.
     This replaces the local global_audit.jsonl file.
+    Fails silently to never block the calling workflow.
     """
-    client = get_supabase()
-    client.table("dome_audit_log").insert({
-        "agent_id": agent_id,
-        "environment": get_environment(),
-        "action_type": action_type,
-        "summary": summary,
-        "details": details or {},
-        "conversation_id": conversation_id
-    }).execute()
+    try:
+        client = get_supabase()
+        client.table("dome_audit_log").insert({
+            "agent_id": agent_id,
+            "environment": get_environment(),
+            "action_type": action_type,
+            "summary": summary,
+            "details": details or {},
+            "conversation_id": conversation_id
+        }).execute()
+    except Exception as e:
+        logger.warning(f"Audit log failed (non-critical): {e}")

@@ -223,13 +223,16 @@ class MemoryClient:
             
             memories = result.data or []
         else:
-            # Fallback: keyword search
+            # Fallback: keyword search (escape SQL wildcards in user input)
+            safe_query = query.replace("%", "").replace("_", "").strip()
+            if not safe_query:
+                return []
             q = self.client.table("dome_memories").select("*")
             if agent_id:
                 q = q.eq("agent_id", agent_id)
             if category:
                 q = q.eq("category", category)
-            q = q.ilike("content", f"%{query}%")
+            q = q.ilike("content", f"%{safe_query}%")
             result = q.limit(limit).execute()
             memories = result.data or []
         
@@ -331,10 +334,13 @@ class MemoryClient:
             }).execute()
             return result.data or []
         else:
+            safe_query = query.replace("%", "").replace("_", "").strip()
+            if not safe_query:
+                return []
             q = self.client.table("dome_insights").select("*")
             if category:
                 q = q.eq("category", category)
-            q = q.ilike("content", f"%{query}%").is_("superseded_by", "null")
+            q = q.ilike("content", f"%{safe_query}%").is_("superseded_by", "null")
             result = q.limit(limit).execute()
             return result.data or []
     
