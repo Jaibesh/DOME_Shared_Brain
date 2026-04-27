@@ -112,3 +112,8 @@ def trigger_sync(background_tasks: BackgroundTasks, x_api_key: str = Header(defa
     _verify_api_key(x_api_key)
     background_tasks.add_task(scheduled_job)
     return {"status": "Sync triggered in background"}
+
+if __name__ == "__main__":
+    import uvicorn
+    # Run the FastAPI server to keep the lifespan scheduler alive
+    uvicorn.run("main:app", host="0.0.0.0", port=8002, reload=False)
