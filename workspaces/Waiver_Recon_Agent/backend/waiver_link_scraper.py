@@ -176,8 +176,8 @@ class WaiverLinkScraper:
 
             # 2. Wait for page load and check for cancellation
             try:
-                # Wait for either Rider Actions or Canceled badge to indicate page loaded
-                page.wait_for_selector("text=Rider Actions, text=Canceled, text=Cancelled", state="attached", timeout=15000)
+                # Wait for either the top-level Actions button or Canceled badge to indicate page loaded
+                page.wait_for_selector("button:has-text('Actions'), text=Canceled, text=Cancelled", state="attached", timeout=15000)
             except PlaywrightTimeout:
                 pass  # Fall through to specific checks
 
