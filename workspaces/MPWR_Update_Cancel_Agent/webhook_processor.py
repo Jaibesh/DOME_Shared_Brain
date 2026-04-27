@@ -310,7 +310,35 @@ def _process_update(supabase, row):
         except Exception as e:
             log.warning(f"  [Date] Could not parse activity date {activity_date_str}: {e}")
 
-    # -- DELTA DETECTION --
+    # -- ABSOLUTE DELTA DETECTION --
+    # Check if ANY field in the payload actually changed
+    any_field_changed = False
+    for k, v in db_updates.items():
+        old_v = existing_row.get(k)
+        
+        # Normalize floats to prevent 960.0 vs 960 mismatch
+        old_str = str(old_v).strip() if old_v is not None else ""
+        new_str = str(v).strip() if v is not None else ""
+        
+        if old_str != new_str:
+            # Special case for floats
+            try:
+                if float(old_str) == float(new_str):
+                    continue
+            except ValueError:
+                pass
+                
+            any_field_changed = True
+            log.info(f"  [Delta] Field '{k}' changed: '{old_str}' -> '{new_str}'")
+            # Don't break here so we can log all changes if needed, or just break for speed.
+            break
+
+    if not any_field_changed:
+        log.info(f"  [Delta] Absolutely no mapped fields changed for {tw_conf}. Skipping webhook entirely.")
+        _mark_webhook(supabase, "update_webhooks", row, "processed")
+        return
+
+    # -- CORE DELTA DETECTION --
     core_fields = ["activity_name", "activity_date", "activity_time", "vehicle_model", "vehicle_qty"]
     core_changed = False
     
