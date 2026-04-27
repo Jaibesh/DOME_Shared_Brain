@@ -134,6 +134,20 @@ def process_payment_webhooks():
 
         # Settle in MPOWR if due is 0
         if amount_due == 0 and not mpwr_payment_settled:
+            activity_date_str = reservation.get("activity_date")
+            if activity_date_str:
+                try:
+                    import pytz
+                    act_date = datetime.strptime(activity_date_str, "%Y-%m-%d").date()
+                    today = datetime.now(pytz.timezone('America/Denver')).date()
+                    if act_date < today:
+                        log.info(f"[{tw_conf}] Activity date {act_date} is in the past. Skipping MPOWR payment settlement.")
+                        supabase.table("reservations").update({"mpwr_payment_settled": True}).eq("tw_confirmation", tw_conf).execute()
+                        mark_webhook_status(supabase, wh_id, "processed")
+                        continue
+                except Exception as e:
+                    pass
+
             log.info(f"[{tw_conf}] Balance is $0. Attempting MPOWR settlement.")
             
             # The amount to settle is typically the payload's "amount" field, or we just let MPOWR auto-fill
