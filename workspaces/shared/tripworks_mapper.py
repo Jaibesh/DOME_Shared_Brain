@@ -1277,8 +1277,7 @@ def extract_update_data(payload: dict) -> dict:
     }
     
     raw_supabase_updates = {
-        "first_name": p["first_name"],
-        "last_name": p["last_name"],
+        "guest_name": f"{p['first_name']} {p['last_name']}".strip(),
         "phone": p["phone"],
         "activity_name": p["activity"],
         "activity_date": p["activity_date"],
