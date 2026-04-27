@@ -243,6 +243,10 @@ class MpowrUpdaterBot:
             if "login" in current_url or "auth" in current_url or "signin" in current_url:
                 log.warning("[Session] Session expired — URL redirected to login page")
                 return False
+                
+            if not current_url.endswith("/orders/create"):
+                log.warning(f"[Session] Session expired — URL redirected to unexpected page: {current_url}")
+                return False
 
             # Also check if the page has a login form (SSO gateway)
             login_form = self._page.locator("#username")
@@ -268,12 +272,19 @@ class MpowrUpdaterBot:
         log.info("[Session] Attempting re-authentication...")
 
         try:
-            # First attempt: login on the current page (session expired but browser ok)
+            # Check if we are already on a login page or SSO gateway
+            login_form = self._page.locator("#username")
+            if login_form.count() == 0:
+                log.info("[Session] Navigating to login gateway for re-auth...")
+                self._page.goto("https://mpwr-hq.poladv.com/users/sign_in", timeout=TIMEOUTS["create_page_load"])
+                
+            # First attempt: login on the current page
+            from mpowr_login import login_to_mpowr
             login_to_mpowr(self._page, self.email, self.password)
             log.info("[Session] Re-authentication successful (same browser)")
             return True
-        except MpowrLoginError:
-            log.warning("[Session] Re-auth on same page failed. Restarting browser...")
+        except Exception as e:
+            log.warning(f"[Session] Re-auth on same page failed: {e}. Restarting browser...")
 
         try:
             # Second attempt: full browser restart
@@ -2166,6 +2177,10 @@ class MpowrUpdaterBot:
                     log.warning(f"  [Update] Attempt {attempt + 1}: Actions dropdown opened but no reschedule option found. Retrying...")
                 else:
                     log.warning(f"  [Update] Attempt {attempt + 1}: Actions button not visible. Waiting...")
+                    if attempt == 0:
+                        log.warning("  [Update] Actions button not found on first attempt. Forcing re-auth and reloading page...")
+                        self._reauth()
+                        self._page.goto(mpwr_url, timeout=TIMEOUTS["create_page_load"], wait_until="domcontentloaded")
                     time.sleep(3)
             
             if not reschedule_clicked:

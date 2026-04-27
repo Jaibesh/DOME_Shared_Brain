@@ -224,13 +224,14 @@ def process_webhooks():
                             created_this_batch[tw_conf.upper()] = mpwr_conf_joined
                             
                             # DOME V4 Audit Trail (Fire-and-forget)
+                            primary_p = valid_payloads[0]
                             try:
                                 from core.supabase_client import log_audit
                                 log_audit(
                                     agent_id="mpwr_creator",
                                     action_type="reservation_created",
                                     summary=f"Created {tw_conf} → MPOWR #{mpwr_conf_joined}",
-                                    details={"tw_conf": tw_conf, "mpowr_id": mpwr_conf_joined, "activity": primary_p["activity"]}
+                                    details={"tw_conf": tw_conf, "mpowr_id": mpwr_conf_joined, "activity": primary_p.get("activity", "")}
                                 )
                             except Exception as e:
                                 log.warning(f"Failed to log DOME audit trail: {e}")
@@ -239,7 +240,6 @@ def process_webhooks():
                             try:
                                 log.info(f"[Dashboard] Attempting DB push for {tw_conf}...")
                                 # Build a minimal row dict for map_legacy_to_dashboard (using first payload for base metadata)
-                                primary_p = valid_payloads[0]
                                 row_for_dash = {
                                     "TW Confirmation": tw_conf,
                                     "First Name": primary_p["first_name"],
@@ -251,7 +251,7 @@ def process_webhooks():
                                     "Activity Time": primary_p["activity_time"],
                                     "Ticket Type": "",
                                     "Party Size": primary_p.get("party_size", 1),
-                                    "Sub-Total": subtotal_dollars,
+                                    "Sub-Total": adjusted_subtotal_dollars,
                                     "Notes": "",
                                     "has_adventure_assure": "adventure" in primary_p.get("insurance_label", "").lower(),
                                     "has_tripsafe": primary_p.get("has_tripsafe", False),

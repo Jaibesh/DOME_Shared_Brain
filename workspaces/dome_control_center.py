@@ -343,9 +343,21 @@ class DOMEControlCenter(ctk.CTk):
             log_container, fg_color=BG_LOG, text_color=TEXT_PRIMARY,
             font=ctk.CTkFont(family="Consolas", size=12),
             corner_radius=6, border_width=0,
-            state="disabled", wrap="word",
+            state="normal", wrap="word",
         )
         self._log_text.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+
+        def prevent_typing(event):
+            # Allow modifier keys (Ctrl/Cmd) + C or A
+            if event.state & 0x0004 or event.state & 0x0008 or event.state & 0x20000:
+                if event.keysym.lower() in ('c', 'a'):
+                    return None
+            # Allow arrow keys and page up/down for navigation
+            if event.keysym in ('Up', 'Down', 'Left', 'Right', 'Prior', 'Next', 'Home', 'End'):
+                return None
+            return "break"
+
+        self._log_text.bind("<Key>", prevent_typing)
 
         # Clear logs button in the log header
         self._clear_logs_btn = ctk.CTkButton(
@@ -495,10 +507,17 @@ class DOMEControlCenter(ctk.CTk):
                 card.configure(fg_color=BG_CARD, border_color="#30363d")
 
         # Force immediate log refresh
-        self._update_log_viewer()
+        self._update_log_viewer(force=True)
 
-    def _update_log_viewer(self):
+    def _update_log_viewer(self, force=False):
         """Refresh the log text widget with the selected agent's buffer."""
+        # Pause auto-refresh if the user has text selected so they can copy it
+        try:
+            if not force and self._log_text._textbox.tag_ranges("sel"):
+                return
+        except Exception:
+            pass
+            
         agent = self.agents[self.selected_index]
         log_lines = list(agent.log_buffer)
 
@@ -515,8 +534,6 @@ class DOMEControlCenter(ctk.CTk):
         for line in log_lines:
             tag = self._classify_line(line)
             self._log_text._textbox.insert("end", line + "\n", tag)
-
-        self._log_text.configure(state="disabled")
 
         if at_bottom:
             self._log_text._textbox.see("end")
@@ -598,7 +615,7 @@ class DOMEControlCenter(ctk.CTk):
         agent = self.agents[self.selected_index]
         agent.log_buffer.clear()
         agent.log_buffer.append("[Control Center] Logs cleared.")
-        self._update_log_viewer()
+        self._update_log_viewer(force=True)
 
     def _copy_logs(self):
         """Copy logs from the text widget to the clipboard."""

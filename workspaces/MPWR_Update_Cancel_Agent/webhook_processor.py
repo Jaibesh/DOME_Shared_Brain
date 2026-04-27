@@ -291,8 +291,20 @@ def _process_update(supabase, row):
         return
 
     # -- DATE CHECK --
-    # Skip MPOWR automation for reservations in the past
+    # -- NORMALIZE DATES --
+    # Ensure all dates match Supabase YYYY-MM-DD format to prevent false deltas
     db_updates = update_data["supabase_updates"]
+    for date_field in ["activity_date", "end_date"]:
+        if date_field in db_updates and db_updates[date_field]:
+            val = str(db_updates[date_field]).strip()
+            if "/" in val:
+                try:
+                    from datetime import datetime
+                    db_updates[date_field] = datetime.strptime(val, "%m/%d/%Y").strftime("%Y-%m-%d")
+                except ValueError:
+                    pass
+
+    # Skip MPOWR automation for reservations in the past
     activity_date_str = db_updates.get("activity_date") or existing_row.get("activity_date")
     if activity_date_str:
         try:
@@ -389,7 +401,9 @@ def _process_update(supabase, row):
 
     # 2. Update Supabase with incoming data REGARDLESS of MPOWR success,
     # because TripWorks is the source of truth for operations
-    db_updates = update_data["supabase_updates"]
+    # NOTE: db_updates already contains the date-normalized version from earlier.
+    # Do NOT re-assign from update_data["supabase_updates"] here or the
+    # un-normalized MM/DD/YYYY dates will be written back, causing false deltas.
     try:
         supabase.table("reservations").update(db_updates).eq("tw_confirmation", tw_conf.upper()).execute()
         log.info(f"  ✅ [Update] Updated Supabase row for {tw_conf} with source of truth data.")
