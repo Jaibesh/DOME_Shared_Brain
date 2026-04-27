@@ -1154,14 +1154,23 @@ def map_legacy_to_dashboard(row: dict, mpwr_conf_number: str, webhook_payload: d
     
     # Safely extract end time
     end_time = ""
-    trip_orders = webhook_payload.get("trip_orders", [])
+    trip_orders = webhook_payload.get("tripOrders", webhook_payload.get("trip_orders", []))
     if trip_orders:
         ts = trip_orders[0].get("experience_timeslot", {})
-        if ts.get("end_time"):
-            end_time = ts["end_time"]
-            # basic clean up: 17:00:00 -> 17:00
-            if len(end_time.split(":")) == 3:
-                end_time = ":".join(end_time.split(":")[:2])
+        raw_end = ts.get("end_time")
+        if raw_end:
+            if "T" in str(raw_end):
+                # ISO format: "2026-04-27T11:00:00+00:00"
+                time_part = str(raw_end).split("T")[1].split("+")[0].split("-")[0].replace("Z", "")
+                try:
+                    parsed_time = datetime.strptime(time_part, "%H:%M:%S")
+                    end_time = parsed_time.strftime("%I:%M %p").lstrip("0")
+                except Exception:
+                    end_time = time_part[:5]
+            else:
+                end_time = str(raw_end)
+                if len(end_time.split(":")) == 3:
+                    end_time = ":".join(end_time.split(":")[:2])
     
     dashboard_row = {
         "TW Confirmation": str(row.get("TW Confirmation", "")),
