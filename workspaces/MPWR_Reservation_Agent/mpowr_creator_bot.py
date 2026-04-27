@@ -588,6 +588,16 @@ class MpowrCreatorBot:
                     error_message=f"DRY_RUN: Would create reservation for {name}",
                 )
 
+            # Phase B: Price Override via Options → Override Pricing on creation form
+            # This must happen BEFORE Submit. The "Options" dropdown is on the listing
+            # selection section and reveals inline price inputs when toggled.
+            price_overridden = False
+            target_price = customer.get("target_price", 0)
+            if target_price > 0:
+                price_overridden = self._override_pricing_on_form(
+                    target_price, name, tw_conf, customer.get("vehicle_qty", 1)
+                )
+
             print("\n[Step 12] Clicking Submit...")
             submit = self._page.get_by_role("button", name="Reserve Now", exact=False).first
             if submit.count() == 0 or not submit.is_visible(timeout=5000):
@@ -663,15 +673,6 @@ class MpowrCreatorBot:
                     screenshot_path=ss,
                 )
 
-            # Phase B: Price Override — MUST happen AFTER submission
-            # The Actions → Override Price menu only exists on the Reservation Details page.
-            price_overridden = False
-            target_price = customer.get("target_price", 0)
-            if target_price > 0:
-                price_overridden = self._verify_and_override_price(
-                    target_price, name, tw_conf, customer.get("vehicle_qty", 1)
-                )
-
             ss_final = self._screenshot(f"success_{tw_conf}_{conf_id}")
             return CreationResult(
                 status="success",
@@ -691,29 +692,32 @@ class MpowrCreatorBot:
             )
 
     # -----------------------------------------------------------------------
-    # Phase B: Price Verification & Override
+    # Phase B: Price Override (on Creation Form)
     # -----------------------------------------------------------------------
 
-    def _verify_and_override_price(self, target_price: float, 
-                                    customer_name: str, tw_conf: str, vehicle_qty: int = 1) -> bool:
+    def _override_pricing_on_form(self, target_price: float,
+                                   customer_name: str, tw_conf: str, vehicle_qty: int = 1) -> bool:
         """
-        After creating a reservation, verifies the MPOWR price matches TripWorks.
-        If not, uses Actions → Override Price to adjust.
+        Override pricing on the MPOWR creation form BEFORE submission.
+
+        Flow:
+        1. Read the current Subtotal from the sidebar
+        2. If mismatch, scroll up to "Select a listing" → click "Options" → "Override Pricing"
+        3. This reveals inline price input field(s) on the form
+        4. Fill the target price into the input(s)
 
         Returns True if price was overridden, False if it matched or override failed.
         """
         print(f"\n[Price Check] Target: ${target_price:.2f} (Qty: {vehicle_qty})")
 
         try:
-            # Read MPOWR's displayed price
-            time.sleep(2)
-            # Search explicitly for "Subtotal" since TripWorks target_price excludes MPOWR's native tax generation
+            # Read MPOWR's displayed Subtotal from the sidebar
+            time.sleep(1)
             try:
                 subtotal_node = self._page.get_by_text("Subtotal", exact=True).first
                 if subtotal_node.is_visible(timeout=5000):
                     price_text = subtotal_node.evaluate("el => el.parentElement.innerText")
                 else:
-                    # Fallback to total_price_display if Subtotal is totally missing from DOM
                     fallback_element = self._find_element("total_price_display", timeout=5000)
                     price_text = fallback_element.inner_text() if fallback_element else ""
             except Exception as e:
@@ -724,16 +728,16 @@ class MpowrCreatorBot:
                 print("  ⚠️ Price element is empty. Skipping price check.")
                 return False
 
-            # Parse price accommodating whole numbers like "$878" and standard "$340.23"
+            # Parse the displayed price
             price_num = re.search(r'\$\s*([\d,]+(?:\.\d{2})?)', price_text)
             if not price_num:
                 price_num = re.search(r'([\d,]+(?:\.\d{2})?)', price_text.replace(",", ""))
                 if not price_num:
-                    print(f"  ⚠️ Could not parse actual numerical price from: '{price_text}'")
+                    print(f"  ⚠️ Could not parse price from: '{price_text}'")
                     return False
-                    
+
             mpowr_price = float(price_num.group(1).replace(",", ""))
-            print(f"  MPOWR Subtotal Price: ${mpowr_price:.2f}")
+            print(f"  MPOWR Subtotal: ${mpowr_price:.2f}")
 
             # Check if prices match (within $0.01 tolerance)
             if abs(mpowr_price - target_price) < 0.02:
@@ -741,108 +745,132 @@ class MpowrCreatorBot:
                 return False
 
             # Price mismatch — override needed
-            print(f"  ⚠️ Price mismatch! MPOWR: ${mpowr_price:.2f} vs TripWorks: ${target_price:.2f}")
-            print(f"  Difference: ${abs(mpowr_price - target_price):.2f}")
+            diff = abs(mpowr_price - target_price)
+            print(f"  ⚠️ Price mismatch! MPOWR: ${mpowr_price:.2f} vs TripWorks: ${target_price:.2f} (diff: ${diff:.2f})")
 
-            # Click Actions dropdown (top-right)
-            actions_btn = self._page.get_by_role("button", name="Actions", exact=False).first
-            if actions_btn.count() == 0:
-                actions_btn = self._page.get_by_role("button", name="Options", exact=False).first
-                
-            if actions_btn.count() == 0 or not actions_btn.is_visible(timeout=5000):
-                print("  ❌ Actions button not found. Manual override required.")
+            # Scroll up to the listing selection area where the "Options" button lives
+            self._page.evaluate("window.scrollTo(0, 0)")
+            time.sleep(1)
+
+            # Find and click the "Options" dropdown near "Select a listing"
+            options_btn = self._page.get_by_role("button", name="Options").first
+            if options_btn.count() == 0:
+                # Fallback: try locating by text
+                options_btn = self._page.locator("button:has-text('Options')").first
+
+            if options_btn.count() == 0 or not options_btn.is_visible(timeout=5000):
+                print("  ❌ 'Options' button not found near listing selection.")
+                ss = self._screenshot(f"error_no_options_btn_{tw_conf}")
                 self.slack.send_price_override_alert(
                     customer_name, tw_conf, mpowr_price, target_price, False, "<Pending>"
                 )
                 return False
 
-            actions_btn.click()
+            options_btn.click()
             time.sleep(1)
 
-            # Click "Override Price"
-            override_btn = self._page.get_by_role("menuitem", name="Override Price", exact=False).first
-            if override_btn.count() == 0:
-                override_btn = self._page.get_by_role("menuitem", name="Edit Price", exact=False).first
-                
-            if override_btn.count() == 0 or not override_btn.is_visible(timeout=3000):
-                print("  ❌ Override Price option not found.")
+            # Click "Override Pricing" in the dropdown
+            override_item = self._page.get_by_text("Override Pricing", exact=False).first
+            if override_item.count() == 0:
+                override_item = self._page.get_by_role("menuitem", name="Override Pricing", exact=False).first
+            if override_item.count() == 0:
+                override_item = self._page.get_by_text("Override Price", exact=False).first
+
+            if override_item.count() == 0 or not override_item.is_visible(timeout=3000):
+                print("  ❌ 'Override Pricing' option not found in dropdown.")
+                ss = self._screenshot(f"error_no_override_option_{tw_conf}")
+                self._page.keyboard.press("Escape")
                 self.slack.send_price_override_alert(
                     customer_name, tw_conf, mpowr_price, target_price, False, "<Pending>"
                 )
                 return False
 
-            override_btn.click()
-            time.sleep(1)
+            override_item.click()
+            print("  ✅ 'Override Pricing' toggled on.")
+            time.sleep(2)  # Wait for price input fields to appear
 
-            # Find all price input fields in the override modal using comma-separated fallbacks
-            price_inputs = self._page.locator(", ".join(SELECTORS["price_input"]))
+            # Find the price input field(s) that appeared after toggling override
+            # Try multiple selector strategies
+            price_inputs = self._page.locator("input[type='number']")
             input_count = price_inputs.count()
-            
+
             if input_count == 0:
-                # Try generic number input fallback
-                price_inputs = self._page.locator("input[type='number']")
+                # Try currency-style inputs
+                price_inputs = self._page.locator(", ".join(SELECTORS["price_input"]))
                 input_count = price_inputs.count()
-                
+
             if input_count == 0:
-                print("  ❌ Price input field not found in override modal.")
-                ss = self._screenshot(f"error_price_override_{tw_conf}")
+                print("  ❌ No price input fields appeared after enabling Override Pricing.")
+                ss = self._screenshot(f"error_no_price_inputs_{tw_conf}")
                 self.slack.send_price_override_alert(
                     customer_name, tw_conf, mpowr_price, target_price, False, "<Pending>"
                 )
                 return False
 
-            # Calculate difference needed PER input/vehicle unit
-            difference = target_price - mpowr_price
-            
-            # Usually, MPOWR provides N inputs for N vehicles. Or perhaps one input per line item.
-            # We will split the difference equally among all found vehicle inputs,
-            # up to the expected vehicle_qty.
-            num_to_adjust = min(input_count, vehicle_qty)
+            print(f"  Found {input_count} price input field(s).")
 
-            # EDGE-1: Calculate base_diff mathematically to exactly 2 decimals and assign unresolved trailing remainder to the 1st vehicle explicitly
-            base_diff = round(difference / num_to_adjust, 2)
-            remainder = round(difference - (base_diff * num_to_adjust), 2)
-            
-            print(f"  Found {input_count} price inputs. Applying diff of ${base_diff:+.2f} per item (+ ${remainder:+.2f} remainder across {num_to_adjust} items).")
+            # Strategy: if there's only 1 input, set the total target price.
+            # If there are multiple (one per vehicle/line item), split the target evenly.
+            num_to_adjust = min(input_count, max(vehicle_qty, 1))
 
-            for i in range(num_to_adjust):
-                price_input = price_inputs.nth(i)
-                current_val_str = price_input.input_value()
-                try:
-                    current_val = float(current_val_str.replace('$', '').replace(',', ''))
-                except ValueError:
-                    current_val = 0.0
-                    
-                target_diff = base_diff + remainder if i == 0 else base_diff
-                new_vehicle_price = current_val + target_diff
-
-                # Apply the specific difference to the vehicle's price
+            if num_to_adjust == 1:
+                # Single input: set the total target price directly
+                price_input = price_inputs.first
+                price_input.scroll_into_view_if_needed()
+                price_input.click()
                 price_input.fill("")
-                price_input.fill(f"{new_vehicle_price:.2f}")
-                print(f"  Adjusted vehicle {i+1} price from ${current_val:.2f} to ${new_vehicle_price:.2f} (Diff: ${target_diff:+.2f})")
-
-            # Save the override
-            save_btn = self._page.get_by_role("button", name="Apply", exact=False).first
-            if save_btn.count() == 0:
-                save_btn = self._page.get_by_role("button", name="Save", exact=False).first
-                
-            if save_btn.count() > 0 and save_btn.is_visible(timeout=3000):
-                save_btn.click()
-                time.sleep(2)
-                print(f"  ✅ Price overridden successfully.")
-                try:
-                    self.slack.send_price_override_alert(
-                        customer_name, tw_conf, mpowr_price, target_price, True, "<Pending>"
-                    )
-                except Exception as slack_err:
-                    print(f"  ⚠️ Slack price alert failed (non-fatal): {slack_err}")
-                return True
+                price_input.fill(f"{target_price:.2f}")
+                print(f"  Set price input to ${target_price:.2f}")
             else:
-                print("  ❌ Save button not found after price override.")
-                return False
+                # Multiple inputs: split target price evenly with remainder on first
+                per_unit = round(target_price / num_to_adjust, 2)
+                remainder = round(target_price - (per_unit * num_to_adjust), 2)
+
+                for i in range(num_to_adjust):
+                    price_input = price_inputs.nth(i)
+                    unit_price = per_unit + remainder if i == 0 else per_unit
+
+                    price_input.scroll_into_view_if_needed()
+                    price_input.click()
+                    price_input.fill("")
+                    price_input.fill(f"{unit_price:.2f}")
+                    print(f"  Set vehicle {i+1} price to ${unit_price:.2f}")
+
+            # Wait for the Subtotal to update
+            time.sleep(2)
+
+            # Verify the new subtotal matches
+            try:
+                subtotal_node2 = self._page.get_by_text("Subtotal", exact=True).first
+                if subtotal_node2.is_visible(timeout=3000):
+                    new_text = subtotal_node2.evaluate("el => el.parentElement.innerText")
+                    new_match = re.search(r'\$\s*([\d,]+(?:\.\d{2})?)', new_text)
+                    if new_match:
+                        new_price = float(new_match.group(1).replace(",", ""))
+                        print(f"  New Subtotal: ${new_price:.2f}")
+                        if abs(new_price - target_price) < 0.02:
+                            print(f"  ✅ Price override confirmed!")
+                        else:
+                            print(f"  ⚠️ Subtotal is ${new_price:.2f} but target was ${target_price:.2f}")
+            except Exception:
+                pass  # Non-fatal: we already filled the inputs
+
+            # Scroll back down to customer info / submit section
+            self._page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            time.sleep(1)
+
+            try:
+                self.slack.send_price_override_alert(
+                    customer_name, tw_conf, mpowr_price, target_price, True, "<Pending>"
+                )
+            except Exception as slack_err:
+                print(f"  ⚠️ Slack price alert failed (non-fatal): {slack_err}")
+
+            return True
 
         except Exception as e:
-            print(f"  ❌ Price verification error: {e}")
+            print(f"  ❌ Price override error: {e}")
+            ss = self._screenshot(f"error_price_override_{tw_conf}")
             return False
 
     # -----------------------------------------------------------------------
