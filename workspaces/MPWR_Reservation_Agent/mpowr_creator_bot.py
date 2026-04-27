@@ -588,14 +588,6 @@ class MpowrCreatorBot:
                     error_message=f"DRY_RUN: Would create reservation for {name}",
                 )
 
-            # Phase B: Price verification Shifted BEFORE Submission
-            price_overridden = False
-            target_price = customer.get("target_price", 0)
-            if target_price > 0:
-                price_overridden = self._verify_and_override_price(
-                    target_price, name, tw_conf, customer.get("vehicle_qty", 1)
-                )
-
             print("\n[Step 12] Clicking Submit...")
             submit = self._page.get_by_role("button", name="Reserve Now", exact=False).first
             if submit.count() == 0 or not submit.is_visible(timeout=5000):
@@ -669,6 +661,15 @@ class MpowrCreatorBot:
                     status="error",
                     error_message=f"Created but can't extract ID from URL: {current_url}",
                     screenshot_path=ss,
+                )
+
+            # Phase B: Price Override — MUST happen AFTER submission
+            # The Actions → Override Price menu only exists on the Reservation Details page.
+            price_overridden = False
+            target_price = customer.get("target_price", 0)
+            if target_price > 0:
+                price_overridden = self._verify_and_override_price(
+                    target_price, name, tw_conf, customer.get("vehicle_qty", 1)
                 )
 
             ss_final = self._screenshot(f"success_{tw_conf}_{conf_id}")
