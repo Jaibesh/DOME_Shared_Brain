@@ -41,9 +41,13 @@ def run_mpowr_scraper(email: str, password: str):
         print(f"[MPOWR Scraper] Failed to fetch reservations from Supabase: {e}")
         return
         
-    # Filter out reservations that already have all waivers completed
+    # Filter out reservations that already have all waivers completed or don't need scraping
     reservations = []
     for r in all_reservations:
+        mpwr_number = r.get("mpwr_number") or ""
+        if mpwr_number.upper() in ("", "UNKNOWN", "NOT_REQUIRED", "0", "0.0"):
+            continue
+            
         pol_complete = r.get("polaris_complete") or 0
         pol_expected = r.get("polaris_expected") or 0
         
@@ -97,7 +101,7 @@ def run_mpowr_scraper(email: str, password: str):
                 
                 # Ensure the page has actually loaded before trying to find riders
                 # This prevents network timeouts from silently setting polaris_complete to 0
-                page.wait_for_selector("text=Reservation Details, text=Canceled, text=Cancelled", state="attached", timeout=15000)
+                page.wait_for_selector("text=Rider Actions, text=Canceled, text=Cancelled", state="attached", timeout=15000)
                 
                 # Dynamically wait for the riders list to render (up to 4 seconds)
                 try:

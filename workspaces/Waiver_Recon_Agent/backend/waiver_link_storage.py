@@ -68,7 +68,7 @@ def get_reservations_needing_waiver_links() -> list[dict]:
         needing_links = []
         for r in res.data:
             mpwr_num = str(r.get("mpwr_number") or "").strip()
-            if not mpwr_num or mpwr_num.upper() == "UNKNOWN":
+            if not mpwr_num or mpwr_num.upper() in ("UNKNOWN", "NOT_REQUIRED"):
                 continue
 
             link = str(r.get("mpwr_waiver_link") or "").strip()
