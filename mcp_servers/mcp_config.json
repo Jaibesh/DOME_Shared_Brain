@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "dome-knowledge": {
+      "command": "python",
+      "args": ["-m", "mcp_servers.knowledge_server"],
+      "cwd": "D:\\DOME_CORE",
+      "description": "DOME 4.0 Cloud Memory & Knowledge — Search, store, and manage the shared agentic brain."
+    },
+    "dome-scaffold": {
+      "command": "python",
+      "args": ["-m", "mcp_servers.scaffold_server"],
+      "cwd": "D:\\DOME_CORE",
+      "description": "DOME 4.0 Project Scaffolding — Generate new projects from battle-tested templates."
+    }
+  }
+}
