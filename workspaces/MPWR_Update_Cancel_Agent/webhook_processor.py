@@ -164,7 +164,7 @@ def _process_cancel(supabase, row):
         log.error(f"  [Cancel] Failed to query reservations for {tw_conf}: {e}")
         return
 
-    if not mpwr_number or mpwr_number in ("0", "0.0", ""):
+    if not mpwr_number or mpwr_number in ("0", "0.0", "", "NOT_REQUIRED"):
         log.info(f"  [Cancel] No MPWR number for {tw_conf}. Just deleting from Supabase.")
         # We can just delete the row
         _delete_reservation(supabase, tw_conf)
@@ -266,7 +266,7 @@ def _process_update(supabase, row):
 
     mpwr_number = existing_row.get("mpwr_number")
     
-    if not mpwr_number or mpwr_number in ("0", "0.0", ""):
+    if not mpwr_number or mpwr_number in ("0", "0.0", "", "NOT_REQUIRED"):
         log.info(f"  [Update] No MPWR number for {tw_conf}. Skipping MPOWR update.")
         _mark_webhook(supabase, "update_webhooks", row, "processed")
         return

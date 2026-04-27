@@ -174,9 +174,15 @@ def register_agent(
         "last_heartbeat": datetime.now(timezone.utc).isoformat(),
     }
     
-    result = client.table("dome_agents").upsert(data).execute()
-    logger.info(f"[DOME 4.0] Agent registered: {agent_id} ({get_environment()})")
-    return result.data[0] if result.data else data
+    try:
+        result = client.table("dome_agents").upsert(data).execute()
+        logger.info(f"[DOME 4.0] Agent registered: {agent_id} ({get_environment()})")
+        return result.data[0] if result.data else data
+    except Exception as e:
+        # Suppress PGRST205 if dome_agents table doesn't exist
+        if "PGRST205" not in str(e):
+            logger.warning(f"[DOME] Failed to register agent (non-critical): {e}")
+        return data
 
 
 def heartbeat(agent_id: str) -> None:
@@ -191,7 +197,9 @@ def heartbeat(agent_id: str) -> None:
             "status": "active"
         }).eq("agent_id", agent_id).execute()
     except Exception as e:
-        logger.warning(f"Heartbeat failed for {agent_id}: {e}")
+        # Suppress PGRST205 if dome_agents table doesn't exist
+        if "PGRST205" not in str(e):
+            logger.warning(f"Heartbeat failed for {agent_id}: {e}")
 
 
 # ---------------------------------------------------------------------------
