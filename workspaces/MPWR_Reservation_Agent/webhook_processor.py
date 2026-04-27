@@ -191,10 +191,10 @@ def process_webhooks():
                             _mark_webhook(row_id, "processed")
                             continue
                             
-                        # Split subtotal proportionally across all valid payloads
-                        total_cents = payload.get("subtotal", 0)
-                        subtotal_dollars = total_cents / 100.0
-                        valid_payloads = split_subtotal(valid_payloads, subtotal_dollars)
+                        # Split the ADJUSTED subtotal proportionally across all valid payloads
+                        # valid_payloads[0]["target_price"] already has Trip Safe deducted by the mapper
+                        adjusted_subtotal_dollars = valid_payloads[0].get("target_price", 0.0)
+                        valid_payloads = split_subtotal(valid_payloads, adjusted_subtotal_dollars)
 
                         # Create the reservations
                         if not bot:
