@@ -16,6 +16,13 @@ log = get_bot_logger()
 def safe_webhook_job():
     log.info("--- Starting Webhook Processing Cycle ---")
     try:
+        # DOME Heartbeat
+        try:
+            from core.supabase_client import heartbeat
+            heartbeat("mpwr_payment")
+        except Exception:
+            pass
+            
         process_payment_webhooks()
     except Exception as e:
         log.error(f"Error in webhook processor job: {e}")
@@ -43,6 +50,22 @@ def main():
         return
 
     slack.send_message("🚀 MPWR Payment Agent is starting up...")
+
+    # DOME V4 Agent Registration
+    try:
+        from core.supabase_client import register_agent
+        import inspect
+        workspace_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+        register_agent(
+            agent_id="mpwr_payment",
+            display_name="MPWR Payment Agent",
+            workspace_path=workspace_path,
+            capabilities=["webhook_processing", "deposit_collection", "payment_settlement"],
+            tools=["playwright", "supabase"]
+        )
+        log.info("[DOME] Agent registered to cloud registry.")
+    except Exception as e:
+        log.warning(f"[DOME] Failed to register agent (non-critical): {e}")
 
     # Run jobs once on boot
     safe_webhook_job()

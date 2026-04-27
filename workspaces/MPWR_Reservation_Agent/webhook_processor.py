@@ -223,6 +223,18 @@ def process_webhooks():
                             # Track in batch immediately to prevent same-cycle doubles
                             created_this_batch[tw_conf.upper()] = mpwr_conf_joined
                             
+                            # DOME V4 Audit Trail (Fire-and-forget)
+                            try:
+                                from core.supabase_client import log_audit
+                                log_audit(
+                                    agent_id="mpwr_creator",
+                                    action_type="reservation_created",
+                                    summary=f"Created {tw_conf} → MPOWR #{mpwr_conf_joined}",
+                                    details={"tw_conf": tw_conf, "mpowr_id": mpwr_conf_joined, "activity": primary_p["activity"]}
+                                )
+                            except Exception as e:
+                                log.warning(f"Failed to log DOME audit trail: {e}")
+                            
                             # Push to Dashboard DB (Supabase)
                             try:
                                 log.info(f"[Dashboard] Attempting DB push for {tw_conf}...")

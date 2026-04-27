@@ -20,6 +20,14 @@ log = get_bot_logger()
 def run_creator_safely():
     try:
         from webhook_processor import process_webhooks
+        
+        # DOME Heartbeat
+        try:
+            from core.supabase_client import heartbeat
+            heartbeat("mpwr_creator")
+        except Exception as e:
+            log.warning(f"Failed to send DOME heartbeat: {e}")
+            
         reap_playwright_zombies()
         cleanup_old_screenshots(max_age_days=7)
         process_webhooks()
@@ -28,6 +36,22 @@ def run_creator_safely():
 
 if __name__ == "__main__":
     print("MPOWR Automated System Initialized (Powered by APScheduler). Running indefinitely...")
+    
+    # DOME V4 Agent Registration
+    try:
+        from core.supabase_client import register_agent
+        import inspect
+        workspace_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+        register_agent(
+            agent_id="mpwr_creator",
+            display_name="MPWR Reservation Creator Bot",
+            workspace_path=workspace_path,
+            capabilities=["webhook_processing", "mpowr_creation", "slack_notifications"],
+            tools=["playwright", "supabase"]
+        )
+        print("[DOME] Agent registered to cloud registry.")
+    except Exception as e:
+        print(f"[DOME] Failed to register agent (non-critical): {e}")
     
     # Run once on boot to catch up
     print("Running initial boot sequence...")

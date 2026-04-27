@@ -178,6 +178,19 @@ def _process_cancel(supabase, row):
     if success:
         log.info(f"  ✅ [Cancel] Successfully canceled {mpwr_number} in MPOWR.")
         slack.send_message(f"⏭️ [INTENTIONAL OPERATION] Cancelled MPOWR booking {mpwr_number} to match TripWorks refund for {tw_conf}.")
+        
+        # DOME V4 Audit Trail
+        try:
+            from core.supabase_client import log_audit
+            log_audit(
+                agent_id="mpwr_updater",
+                action_type="reservation_cancelled",
+                summary=f"Cancelled {tw_conf} in MPOWR #{mpwr_number}",
+                details={"tw_conf": tw_conf, "mpowr_id": mpwr_number}
+            )
+        except Exception as e:
+            log.warning(f"Failed to log DOME audit trail: {e}")
+            
         # Now delete from Supabase to keep data pure
         _delete_reservation(supabase, tw_conf)
         _mark_webhook(supabase, "cancel_webhooks", row, "processed")
@@ -318,6 +331,19 @@ def _process_update(supabase, row):
     if all_success:
         log.info(f"  ✅ [Update] Successfully updated MPOWR for {tw_conf}.")
         slack.send_message(f"✅ [SYSTEM AUTOMATION] Successfully updated/rescheduled {tw_conf} (MPWR {mpwr_number}) based on TripWorks changes.")
+        
+        # DOME V4 Audit Trail
+        try:
+            from core.supabase_client import log_audit
+            log_audit(
+                agent_id="mpwr_updater",
+                action_type="reservation_updated",
+                summary=f"Updated {tw_conf} in MPOWR #{mpwr_number}",
+                details={"tw_conf": tw_conf, "mpowr_id": mpwr_number}
+            )
+        except Exception as e:
+            log.warning(f"Failed to log DOME audit trail: {e}")
+            
         _mark_webhook(supabase, "update_webhooks", row, "processed")
     else:
         _mark_webhook(supabase, "update_webhooks", row, "failed")

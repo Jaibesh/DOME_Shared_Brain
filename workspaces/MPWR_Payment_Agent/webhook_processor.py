@@ -144,8 +144,17 @@ def process_payment_webhooks():
             if success:
                 try:
                     supabase.table("reservations").update({"mpwr_payment_settled": True}).eq("tw_confirmation", tw_conf).execute()
+                    
+                    # DOME V4 Audit Trail
+                    from core.supabase_client import log_audit
+                    log_audit(
+                        agent_id="mpwr_payment",
+                        action_type="payment_settled",
+                        summary=f"Settled payment of ${charge_amount:.2f} for {tw_conf} in MPOWR #{mpwr_id}",
+                        details={"tw_conf": tw_conf, "mpowr_id": mpwr_id, "amount": charge_amount}
+                    )
                 except Exception as e:
-                    log.error(f"[{tw_conf}] DB Error setting settled flag: {e}")
+                    log.error(f"[{tw_conf}] DB Error setting settled flag or audit: {e}")
                 mark_webhook_status(supabase, wh_id, "processed")
             else:
                 # Failed to settle, retry later

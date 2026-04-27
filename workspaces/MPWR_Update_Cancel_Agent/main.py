@@ -57,6 +57,13 @@ def run_daemon():
 
     while True:
         try:
+            # DOME Heartbeat
+            try:
+                from core.supabase_client import heartbeat
+                heartbeat("mpwr_updater")
+            except Exception as e:
+                log.warning(f"Failed to send DOME heartbeat: {e}")
+                
             # The processor handles both update and cancel queues
             process_webhooks()
         except Exception as e:
@@ -67,6 +74,22 @@ def run_daemon():
         time.sleep(POLL_INTERVAL_SECONDS)
 
 if __name__ == "__main__":
+    # DOME V4 Agent Registration
+    try:
+        from core.supabase_client import register_agent
+        import inspect
+        workspace_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+        register_agent(
+            agent_id="mpwr_updater",
+            display_name="MPWR Update & Cancel Agent",
+            workspace_path=workspace_path,
+            capabilities=["webhook_processing", "mpowr_updates", "mpowr_cancellations"],
+            tools=["playwright", "supabase"]
+        )
+        log.info("[DOME] Agent registered to cloud registry.")
+    except Exception as e:
+        log.warning(f"[DOME] Failed to register agent (non-critical): {e}")
+
     try:
         run_daemon()
     except KeyboardInterrupt:
