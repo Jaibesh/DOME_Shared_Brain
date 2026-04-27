@@ -149,7 +149,7 @@ def _process_cancel(supabase, row):
 
     # Lookup MPWR ID from Supabase reservations table
     try:
-        res = supabase.table("reservations").select("mpwr_number").eq("tw_confirmation", tw_conf.upper()).execute()
+        res = supabase.table("reservations").select("mpwr_number, activity_date").eq("tw_confirmation", tw_conf.upper()).execute()
         if not res.data:
             if _is_retry_expired(row):
                 log.warning(f"  [Cancel] Reservation {tw_conf} not found after 1hr TTL. Marking as failed.")
@@ -159,7 +159,9 @@ def _process_cancel(supabase, row):
                 log.warning(f"  [Cancel] Reservation {tw_conf} not found in Supabase yet. Marking as retry.")
                 _mark_webhook(supabase, "cancel_webhooks", row, "retry")
             return
-        mpwr_number = res.data[0].get("mpwr_number")
+        existing_row = res.data[0]
+        mpwr_number = existing_row.get("mpwr_number")
+        activity_date_str = existing_row.get("activity_date")
     except Exception as e:
         log.error(f"  [Cancel] Failed to query reservations for {tw_conf}: {e}")
         return
@@ -170,6 +172,21 @@ def _process_cancel(supabase, row):
         _delete_reservation(supabase, tw_conf)
         _mark_webhook(supabase, "cancel_webhooks", row, "processed")
         return
+
+    # Skip MPOWR automation for reservations in the past
+    if activity_date_str:
+        try:
+            from datetime import datetime
+            import pytz
+            act_date = datetime.strptime(activity_date_str, "%Y-%m-%d").date()
+            today = datetime.now(pytz.timezone('America/Denver')).date()
+            if act_date < today:
+                log.info(f"  [Cancel] Activity date {act_date} is in the past. Just deleting from Supabase.")
+                _delete_reservation(supabase, tw_conf)
+                _mark_webhook(supabase, "cancel_webhooks", row, "processed")
+                return
+        except Exception:
+            pass
 
     # Cancel in MPOWR first
     bot = _get_bot()
@@ -271,8 +288,29 @@ def _process_update(supabase, row):
         _mark_webhook(supabase, "update_webhooks", row, "processed")
         return
 
-    # -- DELTA DETECTION --
+    # -- DATE CHECK --
+    # Skip MPOWR automation for reservations in the past
     db_updates = update_data["supabase_updates"]
+    activity_date_str = db_updates.get("activity_date") or existing_row.get("activity_date")
+    if activity_date_str:
+        try:
+            from datetime import datetime
+            import pytz
+            act_date = datetime.strptime(activity_date_str, "%Y-%m-%d").date()
+            today = datetime.now(pytz.timezone('America/Denver')).date()
+            if act_date < today:
+                log.info(f"  [Date] Activity date {act_date} is in the past. Skipping MPOWR update.")
+                try:
+                    supabase.table("reservations").update(db_updates).eq("tw_confirmation", tw_conf.upper()).execute()
+                    log.info(f"  ✅ [Update] Updated Supabase for {tw_conf} (Historical Update).")
+                except Exception as e:
+                    log.error(f"  ❌ [Update] Failed to update Supabase for {tw_conf}: {e}")
+                _mark_webhook(supabase, "update_webhooks", row, "processed")
+                return
+        except Exception as e:
+            log.warning(f"  [Date] Could not parse activity date {activity_date_str}: {e}")
+
+    # -- DELTA DETECTION --
     core_fields = ["activity", "activity_date", "activity_time", "vehicle_model", "vehicle_qty"]
     core_changed = False
     
