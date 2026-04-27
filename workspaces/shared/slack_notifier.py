@@ -38,20 +38,26 @@ class SlackNotifier:
         self.bot_token = os.getenv("SLACK_BOT_TOKEN", "")
         self.user_id = os.getenv("SLACK_USER_ID", "")
         self.channel = os.getenv("SLACK_CHANNEL", "").lstrip("#")  # Slack API needs bare name or ID, not #name
-        self.enabled = bool(self.webhook_url or self.bot_token)
+        
+        # Optional routing for Payment Settlements specifically
+        self.payment_bot_token = os.getenv("SLACK_PAYMENT_BOT_TOKEN", "")
+        self.payment_channel = os.getenv("SLACK_PAYMENT_CHANNEL", "").lstrip("#")
+        
+        self.enabled = bool(self.webhook_url or self.bot_token or self.payment_bot_token)
 
         if not self.enabled:
             print(f"[Slack:{agent_name}] WARNING: No SLACK_WEBHOOK_URL or SLACK_BOT_TOKEN. "
                   "Notifications disabled — falling back to console.")
 
-    def _get_dm_channel(self) -> str | None:
+    def _get_dm_channel(self, override_token: str = None) -> str | None:
         """Opens a DM channel with the configured user."""
-        if not self.bot_token or not self.user_id:
+        token = override_token or self.bot_token
+        if not token or not self.user_id:
             return None
         try:
             resp = http_requests.post(
                 "https://slack.com/api/conversations.open",
-                headers={"Authorization": f"Bearer {self.bot_token}"},
+                headers={"Authorization": f"Bearer {token}"},
                 json={"users": self.user_id},
                 timeout=10,
             )
@@ -275,7 +281,9 @@ class SlackNotifier:
             {"type": "divider"},
         ]
         fallback = f"✅ Payment: ${amount:.2f} for TW {tw_confirmation} (MPOWR #{mpowr_id})"
-        self._send_message(blocks, fallback)
+        self._send_message(blocks, fallback, 
+                           override_token=self.payment_bot_token,
+                           override_channel=self.payment_channel)
 
     def send_deposit_alert(self, tw_confirmation: str, mpowr_id: str,
                             vehicle_qty: int, required_auth: float):
@@ -324,28 +332,42 @@ class SlackNotifier:
     # ═══════════════════════════════════════════════════════════════════════
 
     def _send_message(self, blocks: list | None, text: str,
-                       screenshot_path: str | None = None):
-        if self.bot_token:
-            channel = self.channel or self._get_dm_channel()
+                       screenshot_path: str | None = None,
+                       override_token: str = None, override_channel: str = None):
+        
+        token = override_token or self.bot_token
+        if token:
+            # For override routing, if override_channel is blank, fall back to DM
+            if override_token and override_channel:
+                channel = override_channel
+            elif override_token and not override_channel:
+                channel = self._get_dm_channel(override_token)
+            else:
+                channel = self.channel or self._get_dm_channel()
+                
             if channel:
-                self._post_via_bot(channel, blocks, text, screenshot_path)
+                self._post_via_bot(channel, blocks, text, screenshot_path, token)
                 return
+                
         if self.webhook_url:
             self._post_via_webhook(blocks, text)
             if screenshot_path:
                 print(f"[Slack:{self.agent_name}] Screenshot saved locally: {screenshot_path}")
             return
+            
         print(f"[Slack DISABLED:{self.agent_name}] {text}")
 
     def _post_via_bot(self, channel: str, blocks: list | None, text: str,
-                      screenshot_path: str | None = None):
+                      screenshot_path: str | None = None,
+                      override_token: str = None):
+        token = override_token or self.bot_token
         try:
             payload = {"channel": channel, "text": text}
             if blocks:
                 payload["blocks"] = blocks
             resp = http_requests.post(
                 "https://slack.com/api/chat.postMessage",
-                headers={"Authorization": f"Bearer {self.bot_token}"},
+                headers={"Authorization": f"Bearer {token}"},
                 json=payload, timeout=10,
             )
             data = resp.json()
@@ -358,7 +380,7 @@ class SlackNotifier:
                 return
             print(f"[Slack:{self.agent_name}] DM sent.")
             if screenshot_path and os.path.exists(screenshot_path):
-                self._upload_file(channel, screenshot_path, "Screenshot")
+                self._upload_file(channel, screenshot_path, "Screenshot", token)
         except Exception as e:
             print(f"[Slack:{self.agent_name}] Error: {e}")
             if self.webhook_url:
@@ -375,15 +397,16 @@ class SlackNotifier:
         except Exception as e:
             print(f"[Slack:{self.agent_name}] Webhook error: {e}")
 
-    def _upload_file(self, channel: str, file_path: str, comment: str = ""):
+    def _upload_file(self, channel: str, file_path: str, comment: str = "", override_token: str = None):
         """Upload via modern 3-step Slack file upload flow (Nov 2025+)."""
+        token = override_token or self.bot_token
         try:
             file_size = os.path.getsize(file_path)
             filename = os.path.basename(file_path)
             # Step 1: Get upload URL
             r1 = http_requests.get(
                 "https://slack.com/api/files.getUploadURLExternal",
-                headers={"Authorization": f"Bearer {self.bot_token}"},
+                headers={"Authorization": f"Bearer {token}"},
                 params={"filename": filename, "length": file_size}, timeout=10)
             d1 = r1.json()
             if not d1.get("ok"): return
@@ -394,7 +417,7 @@ class SlackNotifier:
             # Step 3: Finalize
             http_requests.post(
                 "https://slack.com/api/files.completeUploadExternal",
-                headers={"Authorization": f"Bearer {self.bot_token}", "Content-Type": "application/json"},
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
                 json={"files": [{"id": d1["file_id"], "title": f"📸 {comment}"}],
                       "channel_id": channel, "initial_comment": f"📸 {comment}"}, timeout=10)
             print(f"[Slack:{self.agent_name}] Screenshot uploaded: {filename}")
