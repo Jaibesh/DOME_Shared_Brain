@@ -37,7 +37,7 @@ class SlackNotifier:
         self.webhook_url = os.getenv("SLACK_WEBHOOK_URL", "")
         self.bot_token = os.getenv("SLACK_BOT_TOKEN", "")
         self.user_id = os.getenv("SLACK_USER_ID", "")
-        self.channel = os.getenv("SLACK_CHANNEL", "")
+        self.channel = os.getenv("SLACK_CHANNEL", "").lstrip("#")  # Slack API needs bare name or ID, not #name
         self.enabled = bool(self.webhook_url or self.bot_token)
 
         if not self.enabled:
