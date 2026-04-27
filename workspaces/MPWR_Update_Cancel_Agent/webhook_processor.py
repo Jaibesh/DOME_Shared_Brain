@@ -311,7 +311,7 @@ def _process_update(supabase, row):
             log.warning(f"  [Date] Could not parse activity date {activity_date_str}: {e}")
 
     # -- DELTA DETECTION --
-    core_fields = ["activity", "activity_date", "activity_time", "vehicle_model", "vehicle_qty"]
+    core_fields = ["activity_name", "activity_date", "activity_time", "vehicle_model", "vehicle_qty"]
     core_changed = False
     
     for field in core_fields:

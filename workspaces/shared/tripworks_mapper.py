@@ -1280,7 +1280,7 @@ def extract_update_data(payload: dict) -> dict:
         "first_name": p["first_name"],
         "last_name": p["last_name"],
         "phone": p["phone"],
-        "activity": p["activity"],
+        "activity_name": p["activity"],
         "activity_date": p["activity_date"],
         "activity_time": p["activity_time"],
         "vehicle_model": p["mpowr_vehicle"],
@@ -1288,8 +1288,8 @@ def extract_update_data(payload: dict) -> dict:
         "party_size": p["party_size"],
         "sub_total": p["target_price"],
         "total": p["target_price"],
-        "epic_waivers_expected": p["waivers_expected"],
-        "polaris_waivers_expected": p["waivers_expected"],
+        "epic_expected": p["waivers_expected"],
+        "polaris_expected": p["waivers_expected"],
     }
     
     # Safe Merge: Strip out empty strings or None so we don't overwrite valid legacy Zapier data
