@@ -1970,13 +1970,16 @@ class MpowrUpdaterBot:
             # 1. Click Actions Menu (with retry — Headless UI dropdown can be slow)
             actions_clicked = False
             for attempt in range(3):
-                actions_btn = self._page.locator("button").filter(
-                    has_text=re.compile(r"^Actions$", re.IGNORECASE)
-                ).first
-                if not actions_btn.is_visible():
-                    actions_btn = self._page.locator("button:has-text('Actions')").first
+                # Use get_by_role which matches accessible name, ignoring chevron/SVG decorators
+                actions_btn = self._page.get_by_role("button", name="Actions").first
                 
-                if actions_btn.is_visible():
+                try:
+                    actions_btn.wait_for(state="visible", timeout=5000)
+                    actions_visible = True
+                except Exception:
+                    actions_visible = False
+                
+                if actions_visible:
                     actions_btn.click()
                     time.sleep(2)  # Give dropdown time to fully render
                     actions_clicked = True
@@ -2128,13 +2131,16 @@ class MpowrUpdaterBot:
             
             for attempt in range(3):
                 # Find and click the Actions button
-                actions_btn = self._page.locator("button").filter(
-                    has_text=re.compile(r"^Actions$", re.IGNORECASE)
-                ).first
-                if not actions_btn.is_visible():
-                    actions_btn = self._page.locator("button:has-text('Actions')").first
+                # Use get_by_role which matches accessible name, ignoring chevron/SVG decorators
+                actions_btn = self._page.get_by_role("button", name="Actions").first
                 
-                if actions_btn.is_visible():
+                try:
+                    actions_btn.wait_for(state="visible", timeout=5000)
+                    actions_visible = True
+                except Exception:
+                    actions_visible = False
+                
+                if actions_visible:
                     actions_btn.click()
                     time.sleep(2)  # Give dropdown time to fully render
                     
