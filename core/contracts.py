@@ -510,3 +510,82 @@ def create_outbound_message(
         content=content,
         **kwargs
     )
+
+
+# =============================================================================
+# DOME 4.0 — GRAPH STATE CONTRACTS
+# =============================================================================
+
+class GraphStateContract(BaseModel):
+    """
+    Contract for validating DOME 4.0 graph state transitions.
+    Used to validate state before and after node execution.
+    """
+    messages_count: int = Field(ge=0, description="Number of messages in state")
+    turn_count: int = Field(ge=0, description="Current turn number")
+    max_turns: int = Field(ge=1, default=20, description="Max allowed turns")
+    agent_id: str = Field(default="system", description="Active agent ID")
+    environment: str = Field(default="home", description="Execution environment")
+    escalated: bool = Field(default=False, description="Whether workflow has escalated")
+    approval_needed: bool = Field(default=False, description="Whether HITL approval is needed")
+
+
+class WorkerResult(BaseModel):
+    """Standardized result from a DOME worker node."""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    worker_name: str = Field(description="Name of the worker that produced this result")
+    success: bool = Field(default=True)
+    output: Any = Field(default=None, description="The worker's output")
+    error: Optional[str] = Field(default=None, description="Error message if failed")
+    duration_ms: int = Field(default=0, description="Execution time in milliseconds")
+    tools_used: List[str] = Field(default_factory=list, description="Tools invoked")
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# =============================================================================
+# DOME 4.0 — MCP TOOL SCHEMA
+# =============================================================================
+
+class MCPToolSchema(BaseModel):
+    """
+    Schema for registering a tool as MCP-compatible.
+    Used in the dome_tools Supabase table.
+    """
+    tool_id: str = Field(description="Unique tool identifier")
+    display_name: str = Field(description="Human-readable tool name")
+    description: str = Field(default="", description="What the tool does")
+    tool_type: Literal["python", "mcp", "playwright", "api"] = Field(default="python")
+    input_schema: Dict[str, Any] = Field(
+        default_factory=dict, 
+        description="JSON Schema for tool inputs"
+    )
+    output_schema: Dict[str, Any] = Field(
+        default_factory=dict, 
+        description="JSON Schema for tool outputs"
+    )
+    source_path: Optional[str] = Field(
+        default=None, 
+        description="Relative path in DOME_CORE repo"
+    )
+    registered_by: Optional[str] = Field(default=None, description="Agent that registered it")
+    version: str = Field(default="1.0.0")
+
+
+class AgentCard(BaseModel):
+    """
+    Agent Card for A2A (Agent-to-Agent) protocol compatibility.
+    Describes an agent's capabilities for discovery and negotiation.
+    """
+    agent_id: str
+    display_name: str
+    description: str = ""
+    capabilities: List[str] = Field(default_factory=list)
+    tools: List[str] = Field(default_factory=list)
+    environment: str = Field(default="home")
+    dome_version: str = Field(default="4.0")
+    status: Literal["active", "dormant", "archived"] = "active"
+    endpoint: Optional[str] = Field(default=None, description="Network endpoint if available")
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
