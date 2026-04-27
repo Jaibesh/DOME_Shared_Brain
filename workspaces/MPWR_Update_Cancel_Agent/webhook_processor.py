@@ -272,12 +272,14 @@ def _process_update(supabase, row):
         return
 
     if not existing_row:
-        if _is_retry_expired(row):
-            log.warning(f"  [Update] Reservation {tw_conf} not found after 1hr TTL. Marking as failed.")
-            slack.send_message(f"🚨 [ORPHANED WEBHOOK] Update webhook for {tw_conf} expired after 1-hour TTL. Could not find a matching database record.")
+        retry_count = row.get("retry_count", 0)
+        # Drop if it hits TTL or exceeds 5 retries
+        if _is_retry_expired(row) or retry_count >= 5:
+            log.warning(f"  [Update] Reservation {tw_conf} not found after {retry_count} retries. Dropping from queue (likely a Draft or legacy booking).")
+            # We don't send a Slack alert here to prevent spam from Drafts
             _mark_webhook(supabase, "update_webhooks", row, "failed")
         else:
-            log.warning(f"  [Update] Reservation {tw_conf} not found in Supabase yet. Marking as retry.")
+            log.warning(f"  [Update] Reservation {tw_conf} not found in Supabase yet. Marking as retry ({retry_count+1}/5).")
             _mark_webhook(supabase, "update_webhooks", row, "retry")
         return
 
