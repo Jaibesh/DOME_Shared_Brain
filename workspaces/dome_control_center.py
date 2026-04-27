@@ -142,6 +142,7 @@ class AgentProcess:
 
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"  # Force line-buffered output
+        env["PYTHONIOENCODING"] = "utf-8"  # Prevent cp1252 crashes on emoji characters
 
         try:
             # CREATE_NEW_PROCESS_GROUP allows clean termination on Windows
