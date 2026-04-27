@@ -809,32 +809,35 @@ class MpowrCreatorBot:
 
             print(f"  Found {input_count} price input field(s).")
 
-            # Strategy: if there's only 1 input, set the total target price.
-            # If there are multiple (one per vehicle/line item), split the target evenly.
+            # Strategy: Calculate the difference between the target total and MPOWR's total.
+            # Then add that difference to the existing base vehicle price(s) so taxes compute correctly.
+            difference = target_price - mpowr_price
             num_to_adjust = min(input_count, max(vehicle_qty, 1))
 
-            if num_to_adjust == 1:
-                # Single input: set the total target price directly
-                price_input = price_inputs.first
+            base_diff = round(difference / num_to_adjust, 2)
+            remainder = round(difference - (base_diff * num_to_adjust), 2)
+            
+            print(f"  Applying diff of ${base_diff:+.2f} per item (+ ${remainder:+.2f} remainder across {num_to_adjust} items).")
+
+            for i in range(num_to_adjust):
+                price_input = price_inputs.nth(i)
                 price_input.scroll_into_view_if_needed()
+                
+                # Get current value to add difference to
+                current_val_str = price_input.input_value()
+                try:
+                    current_val = float(current_val_str.replace('$', '').replace(',', ''))
+                except ValueError:
+                    current_val = 0.0
+                    
+                target_diff = base_diff + remainder if i == 0 else base_diff
+                new_vehicle_price = current_val + target_diff
+
+                # Apply the specific difference to the vehicle's base price
                 price_input.click()
                 price_input.fill("")
-                price_input.fill(f"{target_price:.2f}")
-                print(f"  Set price input to ${target_price:.2f}")
-            else:
-                # Multiple inputs: split target price evenly with remainder on first
-                per_unit = round(target_price / num_to_adjust, 2)
-                remainder = round(target_price - (per_unit * num_to_adjust), 2)
-
-                for i in range(num_to_adjust):
-                    price_input = price_inputs.nth(i)
-                    unit_price = per_unit + remainder if i == 0 else per_unit
-
-                    price_input.scroll_into_view_if_needed()
-                    price_input.click()
-                    price_input.fill("")
-                    price_input.fill(f"{unit_price:.2f}")
-                    print(f"  Set vehicle {i+1} price to ${unit_price:.2f}")
+                price_input.fill(f"{new_vehicle_price:.2f}")
+                print(f"  Adjusted vehicle {i+1} price from ${current_val:.2f} to ${new_vehicle_price:.2f} (Diff: ${target_diff:+.2f})")
 
             # Wait for the Subtotal to update
             time.sleep(2)
