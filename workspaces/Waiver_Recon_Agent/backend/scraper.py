@@ -102,7 +102,7 @@ def run_mpowr_scraper(email: str, password: str):
                 # Ensure the page has actually loaded before trying to find riders
                 # This prevents network timeouts from silently setting polaris_complete to 0
                 try:
-                    page.wait_for_selector("button:has-text('Actions'), text=Canceled, text=Cancelled", state="attached", timeout=15000)
+                    page.wait_for_selector("button:has-text('Actions'), :text-is('Canceled'), :text-is('Cancelled')", state="attached", timeout=15000)
                 except Exception:
                     pass # Fall through and try to find riders anyway
                 
