@@ -96,9 +96,14 @@ def process_payment_webhooks():
             continue
 
         if not res_data:
-            # Reservation not created yet, retry later
-            log.info(f"Reservation {tw_conf} not found in DB. Setting to retry.")
-            mark_webhook_status(supabase, wh_id, "retry")
+            # Check retry count
+            retry_count = wh.get("retry_count", 0)
+            if retry_count >= 5:
+                log.warning(f"Reservation {tw_conf} not found after {retry_count} retries. Dropping from queue.")
+                mark_webhook_status(supabase, wh_id, "failed")
+            else:
+                log.info(f"Reservation {tw_conf} not found in DB. Setting to retry ({retry_count+1}/5).")
+                mark_webhook_status(supabase, wh_id, "retry", increment_retry=True)
             continue
 
         reservation = res_data[0]
@@ -180,12 +185,21 @@ def process_payment_webhooks():
                 log.info(f"[{tw_conf}] Balance not zero (Due: ${amount_due:.2f}). No MPOWR action needed.")
             mark_webhook_status(supabase, wh_id, "processed")
 
-def mark_webhook_status(supabase, wh_id: str, status: str):
+def mark_webhook_status(supabase, wh_id: str, status: str, increment_retry: bool = False):
     try:
-        supabase.table("pending_payment_webhooks").update({
+        updates = {
             "status": status,
             "processed_at": datetime.now(timezone.utc).isoformat() if status == "processed" else None
-        }).eq("id", wh_id).execute()
+        }
+        if increment_retry:
+            # Fetch current retry_count and increment
+            try:
+                res = supabase.table("pending_payment_webhooks").select("retry_count").eq("id", wh_id).execute()
+                current = (res.data[0].get("retry_count") or 0) if res.data else 0
+                updates["retry_count"] = current + 1
+            except Exception:
+                updates["retry_count"] = 1
+        supabase.table("pending_payment_webhooks").update(updates).eq("id", wh_id).execute()
     except Exception as e:
         log.error(f"Failed to update webhook {wh_id} status to {status}: {e}")
 

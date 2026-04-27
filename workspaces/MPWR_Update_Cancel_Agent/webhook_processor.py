@@ -151,12 +151,12 @@ def _process_cancel(supabase, row):
     try:
         res = supabase.table("reservations").select("mpwr_number, activity_date").eq("tw_confirmation", tw_conf.upper()).execute()
         if not res.data:
-            if _is_retry_expired(row):
-                log.warning(f"  [Cancel] Reservation {tw_conf} not found after 1hr TTL. Marking as failed.")
-                slack.send_message(f"🚨 [ORPHANED WEBHOOK] Cancellation webhook for {tw_conf} expired after 1-hour TTL. Could not find a matching database record.")
+            retry_count = row.get("retry_count", 0)
+            if _is_retry_expired(row) or retry_count >= 5:
+                log.warning(f"  [Cancel] Reservation {tw_conf} not found after {retry_count} retries. Dropping from queue (likely a Draft or gift card).")
                 _mark_webhook(supabase, "cancel_webhooks", row, "failed")
             else:
-                log.warning(f"  [Cancel] Reservation {tw_conf} not found in Supabase yet. Marking as retry.")
+                log.warning(f"  [Cancel] Reservation {tw_conf} not found in Supabase yet. Marking as retry ({retry_count+1}/5).")
                 _mark_webhook(supabase, "cancel_webhooks", row, "retry")
             return
         existing_row = res.data[0]

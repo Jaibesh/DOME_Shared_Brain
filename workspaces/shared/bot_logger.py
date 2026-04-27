@@ -99,7 +99,7 @@ def get_bot_logger(agent_name: str = "dome_agent", log_dir: str = None) -> loggi
         log_file,
         when="midnight",
         interval=1,
-        backupCount=30,
+        backupCount=14,
         encoding="utf-8",
     )
     file_handler.suffix = "%Y-%m-%d"

@@ -104,6 +104,9 @@ class AgentProcess:
         self.started_at: datetime | None = None
         self._reader_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
+        self._intentional_stop = False  # Track if stop was user-initiated
+        self._crash_count = 0  # Track consecutive crashes for auto-restart protection
+        self._last_crash_time: datetime | None = None
 
     @property
     def is_running(self) -> bool:
@@ -155,6 +158,7 @@ class AgentProcess:
                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
             )
             self.started_at = datetime.now()
+            self._intentional_stop = False
             self.log_buffer.append(f"[Control Center] Agent started (PID: {self.process.pid})")
 
             # Start background thread to read stdout
@@ -172,6 +176,7 @@ class AgentProcess:
             return
 
         self._stop_event.set()
+        self._intentional_stop = True
         self.log_buffer.append("[Control Center] Stopping agent…")
 
         try:
@@ -191,9 +196,48 @@ class AgentProcess:
             self.started_at = None
 
     def restart(self):
+        self.log_buffer.append("[Control Center] 🔄 Restarting agent…")
         self.stop()
         time.sleep(0.5)
+        self._intentional_stop = False
+        self._crash_count = 0
         self.start()
+
+    def check_and_auto_restart(self):
+        """Check if process died unexpectedly and auto-restart it."""
+        if self._intentional_stop:
+            return  # User stopped it, don't auto-restart
+        if self.process is None:
+            return  # Never started
+        if self.is_running:
+            return  # Still alive
+
+        # Process died unexpectedly
+        exit_code = self.process.returncode
+        self.process = None
+        self.started_at = None
+
+        # Reset crash counter if last crash was more than 5 minutes ago
+        if self._last_crash_time and (datetime.now() - self._last_crash_time).total_seconds() > 300:
+            self._crash_count = 0
+
+        self._crash_count += 1
+        self._last_crash_time = datetime.now()
+
+        if self._crash_count >= 3:
+            self.log_buffer.append(
+                f"[Control Center] ⛔ Agent crashed {self._crash_count} times in 5 minutes. "
+                f"Auto-restart disabled. Use the Restart button to try again."
+            )
+            return
+
+        self.log_buffer.append(
+            f"[Control Center] ⚠️ Agent exited unexpectedly (code: {exit_code}). "
+            f"Auto-restarting in 5 seconds… (crash {self._crash_count}/3)"
+        )
+        time.sleep(5)
+        if not self._intentional_stop:  # Check again in case user stopped during the wait
+            self.start()
 
     def _read_stdout(self):
         """Background thread: reads stdout line-by-line into the log buffer."""
@@ -230,7 +274,8 @@ class DOMEControlCenter(ctk.CTk):
         self._name_labels: list[ctk.CTkLabel] = []
         self._preview_labels: list[ctk.CTkLabel] = []
         self._uptime_labels: list[ctk.CTkLabel] = []
-        self._card_buttons: list[dict] = []  # {"start": btn, "stop": btn}
+        self._card_buttons: list[dict] = []  # {"start": btn, "stop": btn, "restart": btn}
+        self._shutting_down = False
 
         self._build_ui()
 
@@ -300,6 +345,14 @@ class DOMEControlCenter(ctk.CTk):
             state="disabled", wrap="word",
         )
         self._log_text.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+
+        # Clear logs button in the log header
+        self._clear_logs_btn = ctk.CTkButton(
+            log_container, text="🗑 Clear", fg_color="#30363d", hover_color="#484f58",
+            height=24, width=70, corner_radius=4, font=ctk.CTkFont(size=11),
+            command=self._clear_selected_logs,
+        )
+        self._clear_logs_btn.place(relx=1.0, rely=0.0, x=-15, y=10, anchor="ne")
 
         # Configure text tags for color coding
         self._log_text._textbox.tag_configure("success", foreground=TEXT_SUCCESS)
@@ -384,19 +437,25 @@ class DOMEControlCenter(ctk.CTk):
         btn_row = ctk.CTkFrame(card, fg_color="transparent")
         btn_row.pack(fill="x", padx=10, pady=(0, 6))
 
-        btn_small = {"height": 22, "corner_radius": 4, "font": ctk.CTkFont(size=10), "width": 60}
+        btn_small = {"height": 22, "corner_radius": 4, "font": ctk.CTkFont(size=10), "width": 55}
 
         start_btn = ctk.CTkButton(
             btn_row, text="▶ Start", fg_color="#238636", hover_color="#2ea043",
             command=lambda i=index: self._start_agent(i), **btn_small
         )
-        start_btn.pack(side="left", padx=(0, 4))
+        start_btn.pack(side="left", padx=(0, 3))
 
         stop_btn = ctk.CTkButton(
             btn_row, text="⏹ Stop", fg_color="#da3633", hover_color="#f85149",
             command=lambda i=index: self._stop_agent(i), **btn_small
         )
-        stop_btn.pack(side="left")
+        stop_btn.pack(side="left", padx=(0, 3))
+
+        restart_btn = ctk.CTkButton(
+            btn_row, text="🔄 Restart", fg_color="#1f6feb", hover_color="#388bfd",
+            command=lambda i=index: self._restart_agent(i), **btn_small
+        )
+        restart_btn.pack(side="left")
 
         # Store references
         self._card_frames.append(card)
@@ -404,7 +463,7 @@ class DOMEControlCenter(ctk.CTk):
         self._name_labels.append(name_label)
         self._preview_labels.append(preview_label)
         self._uptime_labels.append(uptime_label)
-        self._card_buttons.append({"start": start_btn, "stop": stop_btn})
+        self._card_buttons.append({"start": start_btn, "stop": stop_btn, "restart": restart_btn})
 
     def _select_agent(self, index: int):
         """Switch the log viewer to the selected agent."""
@@ -464,11 +523,14 @@ class DOMEControlCenter(ctk.CTk):
 
     def _refresh_ui(self):
         """Periodic UI refresh (every 1 second)."""
+        if self._shutting_down:
+            return
+
         # Update clock
         now = datetime.now()
         self._clock_label.configure(text=now.strftime("%I:%M:%S %p  •  %b %d, %Y"))
 
-        # Update each agent card
+        # Update each agent card + check for crashes
         running_count = 0
         for i, agent in enumerate(self.agents):
             is_running = agent.is_running
@@ -480,6 +542,10 @@ class DOMEControlCenter(ctk.CTk):
             else:
                 self._status_labels[i].configure(text="🔴")
                 self._uptime_labels[i].configure(text="")
+
+                # Auto-restart detection (runs in background thread to not block UI)
+                if not agent._intentional_stop and agent.process is not None:
+                    threading.Thread(target=agent.check_and_auto_restart, daemon=True).start()
 
             self._preview_labels[i].configure(text=agent.last_log_line)
 
@@ -506,9 +572,20 @@ class DOMEControlCenter(ctk.CTk):
         if agent.is_running:
             threading.Thread(target=agent.stop, daemon=True).start()
 
-    def _restart_selected(self):
-        agent = self.agents[self.selected_index]
+    def _restart_agent(self, index: int):
+        """Restart a specific agent by index (used by per-card restart buttons)."""
+        agent = self.agents[index]
         threading.Thread(target=agent.restart, daemon=True).start()
+
+    def _restart_selected(self):
+        self._restart_agent(self.selected_index)
+
+    def _clear_selected_logs(self):
+        """Clear the log buffer for the currently selected agent."""
+        agent = self.agents[self.selected_index]
+        agent.log_buffer.clear()
+        agent.log_buffer.append("[Control Center] Logs cleared.")
+        self._update_log_viewer()
 
     def _start_all(self):
         for i in range(len(self.agents)):
@@ -527,6 +604,7 @@ class DOMEControlCenter(ctk.CTk):
 
     def _on_close(self):
         """Clean shutdown: stop all agents then close the window."""
+        self._shutting_down = True
         self._stop_all()
         self.destroy()
 

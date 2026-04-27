@@ -322,8 +322,17 @@ class WaiverLinkScraper:
         consecutive_failures = 0
 
         for i, res in enumerate(reservations):
-            mpwr_id = _extract_mpwr_id(str(res.get("mpwr_number", "")))
+            raw_mpwr = str(res.get("mpwr_number", "")).strip()
             tw_conf = str(res.get("tw_confirmation", "")).strip()
+
+            # Handle comma-separated MPWR IDs (multi-vehicle bookings)
+            # Use the first ID — the waiver link is shared across all IDs in the same booking
+            if "," in raw_mpwr:
+                first_id = raw_mpwr.split(",")[0].strip()
+                print(f"  [WaiverScraper] Multi-ID detected ({raw_mpwr}). Using first: {first_id}")
+                mpwr_id = _extract_mpwr_id(first_id)
+            else:
+                mpwr_id = _extract_mpwr_id(raw_mpwr)
 
             if not mpwr_id:
                 results.append({

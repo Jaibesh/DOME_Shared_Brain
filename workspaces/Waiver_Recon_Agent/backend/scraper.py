@@ -1,6 +1,6 @@
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 from mpowr_browser import MpowrBrowser, MpowrLoginError
@@ -28,11 +28,13 @@ def run_mpowr_scraper(email: str, password: str):
     supabase = get_supabase()
     today_iso = datetime.now(MDT).date().isoformat()
     
-    # 1. Fetch upcoming reservations with an MPWR number
+    # 1. Fetch upcoming reservations with an MPWR number (3-day window to avoid wasting resources on far-future bookings)
+    max_date_iso = (datetime.now(MDT).date() + timedelta(days=3)).isoformat()
     try:
         res = supabase.table("reservations") \
             .select("tw_confirmation, mpwr_number, polaris_complete, polaris_expected") \
             .gte("activity_date", today_iso) \
+            .lte("activity_date", max_date_iso) \
             .neq("mpwr_number", "") \
             .execute()
             
@@ -85,12 +87,14 @@ def run_mpowr_scraper(email: str, password: str):
             mpwr_number = r.get('mpwr_number')
             previous_pol_complete = r.get('polaris_complete') or 0
 
-            # Clean mpwr_number if it's a full URL
+            # Clean mpwr_number: handle URLs and comma-separated IDs
+            if "," in mpwr_number:
+                mpwr_number = mpwr_number.split(",")[0].strip()
             if mpwr_number.startswith("http"):
                 mpwr_number = mpwr_number.rstrip("/").split("/")[-1]
                 
-            if not mpwr_number or mpwr_number.upper() == "UNKNOWN":
-                print(f"[{i+1}/{len(reservations)}] Skipping UNKNOWN or missing MPWR ID for {tw_conf}.")
+            if not mpwr_number or mpwr_number.upper() in ("UNKNOWN", "NOT_REQUIRED", "0", "0.0"):
+                print(f"[{i+1}/{len(reservations)}] Skipping invalid MPWR ID for {tw_conf}.")
                 continue
                 
             print(f"[{i+1}/{len(reservations)}] Scraping {mpwr_number} (TW: {tw_conf})...")
