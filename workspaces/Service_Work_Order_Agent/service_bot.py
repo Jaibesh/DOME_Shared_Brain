@@ -174,62 +174,47 @@ class ServiceBot:
             
             selected_any = False
             
-            # 1. Past Due section - select all
-            log.info("  Checking Past Due section...")
-            # Look for the Past Due header or list
-            past_due_section = self.page.locator('text="Past Due"').locator('xpath=..').first
-            if past_due_section.is_visible():
-                # Find all unchecked checkboxes in this section
-                checkboxes = past_due_section.locator('input[type="checkbox"]:not(:checked)').all()
-                for cb in checkboxes:
-                    cb.check()
-                    selected_any = True
-            else:
-                # Fallback: Just look for rows with red text or inside a red background (often indicated by specific classes)
-                # But safer is finding rows that contain "hours ago" or "miles" and are past due.
-                # A simpler approach: The screenshot shows the Past Due items have a checkbox.
-                # We can just look for the "Past Due" text and assume the list follows it until "Upcoming".
-                pass
-                
-            # If the strict section logic above fails, let's try a more robust DOM traversal:
-            # We want to find ALL checkboxes on the page, and check if they belong to Past Due or Upcoming.
-            # In MPOWR, it's often a single list.
+            # 1. Evaluate all checkboxes on the page
+            log.info("  Evaluating service tasks...")
             
-            # Let's just find all rows that look like service tasks.
-            # A row typically has a checkbox, a task name, and a miles/hours indicator.
-            task_rows = self.page.locator('li, tr').filter(has=self.page.locator('input[type="checkbox"]')).all()
-            
-            for row in task_rows:
-                # Skip if already checked
-                cb = row.locator('input[type="checkbox"]').first
-                if cb.is_checked():
-                    selected_any = True
-                    continue
+            # Find all checkboxes
+            checkboxes = self.page.locator('input[type="checkbox"]').all()
+            for cb in checkboxes:
+                try:
+                    if cb.is_checked():
+                        continue
+                        
+                    # Find the nearest ancestor container that holds the text 'miles' or 'ago'
+                    parent = cb.locator('xpath=ancestor::*[contains(translate(., "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "miles") or contains(translate(., "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "ago")][1]').first
                     
-                row_text = row.inner_text().lower()
-                
-                # Is it past due? Often indicated by negative miles or "ago" or being in the Past Due section.
-                # The prompt implies all Past Due should be checked.
-                # If it's upcoming, we parse the miles.
-                if "ago" in row_text or "past due" in row_text:
-                    cb.check()
-                    selected_any = True
-                    log.info(f"  Selected Past Due task: {row_text[:50].strip()}...")
-                elif "miles" in row_text:
-                    # Extract miles, accounting for potential commas (e.g., "1,200 miles")
-                    match = re.search(r'([\d,]+)\s*miles', row_text)
-                    if match:
-                        miles_str = match.group(1).replace(',', '')
-                        try:
-                            miles = int(miles_str)
-                            if miles < 300:
-                                cb.check()
-                                selected_any = True
-                                log.info(f"  Selected Upcoming task (<300 miles): {miles} miles - {row_text[:50].strip()}...")
-                            else:
-                                log.info(f"  Skipped Upcoming task (>=300 miles): {miles} miles")
-                        except ValueError:
-                            pass
+                    if parent.is_visible():
+                        # If this container holds multiple checkboxes, it's too high up (e.g., the whole table or the 'Select All' row)
+                        if parent.locator('input[type="checkbox"]').count() > 1:
+                            continue
+                            
+                        row_text = parent.inner_text().lower()
+                        
+                        if "ago" in row_text or "past due" in row_text:
+                            cb.check(force=True)
+                            selected_any = True
+                            log.info(f"  Selected Past Due task: {row_text[:50].strip()}...")
+                        elif "miles" in row_text:
+                            # Extract miles, accounting for potential commas (e.g., "1,200 miles")
+                            match = re.search(r'([\d,]+)\s*miles', row_text)
+                            if match:
+                                miles_str = match.group(1).replace(',', '')
+                                try:
+                                    miles = int(miles_str)
+                                    if miles < 300:
+                                        cb.check(force=True)
+                                        selected_any = True
+                                        log.info(f"  Selected Upcoming task (<300 miles): {miles} miles - {row_text[:50].strip()}...")
+                                    else:
+                                        log.info(f"  Skipped Upcoming task (>=300 miles): {miles} miles")
+                                except ValueError:
+                                    pass
+                except Exception as e:
+                    continue
             
             if not selected_any:
                 log.info("  No tasks selected for work order. Skipping.")
