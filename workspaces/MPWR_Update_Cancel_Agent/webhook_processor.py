@@ -259,7 +259,10 @@ def _process_update(supabase, row):
         return
 
     if update_data.get("error"):
-        log.warning(f"  [Update] Mapping error for {tw_conf}: {update_data['error']}")
+        if update_data["error"].startswith("Skipped:"):
+            log.info(f"  [Update] {update_data['error']} ({tw_conf})")
+        else:
+            log.warning(f"  [Update] Mapping error for {tw_conf}: {update_data['error']}")
         _mark_webhook(supabase, "update_webhooks", row, "processed")
         return
 

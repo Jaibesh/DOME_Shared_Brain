@@ -758,7 +758,8 @@ def _build_single_payload(row: dict, row_index: int) -> dict:
     
     if "pro xperience" in act_lower:
         return {"error": "Skipped: Pro XPerience activities do not require MPOWR reservations"}
-        
+    if "slingshot" in act_lower:
+        return {"error": "Skipped: Slingshot activities do not require MPOWR reservations"}
     has_guide_rider = any(kw in act_lower or kw in tt_lower for kw in ["guide car passenger", "guide car rider"])
     has_vehicle = any(kw in tt_lower for kw in ["rzr", "pro r", "turbo", "xpedition", "xp5", "driver", "xp s", "1000", "hour", "day"])
     
@@ -880,6 +881,9 @@ def build_payloads_from_webhook(webhook_json: dict) -> list[dict]:
             continue
         if "pro xperience" in act_lower:
             results.append({"error": "Skipped: Pro XPerience activities do not require MPOWR reservations"})
+            continue
+        if "slingshot" in act_lower:
+            results.append({"error": "Skipped: Slingshot activities do not require MPOWR reservations"})
             continue
             
         # Extract ticket type from non-waiver bookings
