@@ -267,42 +267,39 @@ class ServiceBot:
             log.info("  Confirming modal...")
             time.sleep(1) # Let modal animate
             
-            # Find the active dialog to ensure we don't accidentally click a button underneath it
             dialog = self.page.locator('div[role="dialog"]').last
             if not dialog.is_visible(timeout=2000):
-                # Fallback to entire page if MPOWR doesn't use standard dialog roles
                 dialog = self.page
                 
             try:
                 # Look for typical confirmation button text inside the modal
                 confirm_btn = dialog.locator('button:visible', has_text=re.compile('Confirm|Create|Submit|Save|Yes', re.IGNORECASE)).last
                 confirm_btn.click(timeout=5000)
-            except:
-                # If all else fails, forcefully click whatever button inside the modal IS NOT "Cancel"
-                try:
-                    confirm_btn = dialog.locator('button:visible').filter(has_not_text=re.compile('Cancel|No|Close', re.IGNORECASE)).last
-                    confirm_btn.click(timeout=5000, force=True)
-                except Exception as e:
-                    log.error(f"  Failed to confirm modal: {e}")
+            except Exception as e:
+                log.error(f"  Failed to confirm modal: {e}")
+                return
             
-            # Wait for Work Order Details page or List page to load
-            log.info("  Waiting for Work Order navigation...")
-            self.page.wait_for_url(re.compile(r".*/work-orders.*"), timeout=15000)
+            # Wait for modal to disappear
+            time.sleep(3)
             
-            if self.page.url.rstrip('/').endswith('work-orders'):
-                log.info("  Redirected to Work Orders list. Opening the newly created work order...")
-                # Wait for the table/list to load
-                self.page.wait_for_selector('a[href*="/work-orders/"]', timeout=10000)
-                time.sleep(1) # Let React settle
-                
-                # Click the first work order in the list (the one we just created)
+            # Now we must navigate to the newly created work order to inject the Differential Service.
+            # MPOWR might not auto-redirect, so we manually go to the Work Orders tab.
+            log.info("  Navigating to Work Orders tab to open the new work order...")
+            work_orders_tab = self.page.locator('a, button, div, span, li', has_text=re.compile(r'Work Orders', re.IGNORECASE)).filter(has_not=self.page.locator(':hidden')).first
+            work_orders_tab.click(timeout=5000)
+            time.sleep(2) # Wait for list to load
+            
+            # Click the top-most (newest) work order in the list
+            try:
                 first_wo_link = self.page.locator('a[href*="/work-orders/"]').first
-                first_wo_link.click()
+                first_wo_link.click(timeout=5000)
                 
                 # Wait to enter the details page
                 self.page.wait_for_url(re.compile(r".*/work-orders/.*"), timeout=10000)
-            
-            time.sleep(3) # Give it time to render tasks
+                time.sleep(3) # Give it time to render tasks
+            except Exception as e:
+                log.error(f"  Could not enter work order details page: {e}")
+                return
             
             # Look for Engine oil & filter replace
             page_text = self.page.inner_text('body').lower()
