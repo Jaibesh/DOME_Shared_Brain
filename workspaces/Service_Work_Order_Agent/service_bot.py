@@ -163,10 +163,30 @@ class ServiceBot:
 
     def _process_single_vehicle(self, vehicle_url: str):
         try:
-            self.page.goto(vehicle_url, timeout=20000)
+            self.page.goto(vehicle_url, wait_until='networkidle')
+            time.sleep(2) # Give React a moment to render tabs
             
-            # Click Service Reminders tab
-            service_tab = self.page.locator('a, button, div[role="tab"]').filter(has_text=re.compile('Service Reminders', re.IGNORECASE)).first
+            # 1. Check for existing open work orders
+            log.info("  Checking for existing open work orders...")
+            try:
+                work_orders_tab = self.page.locator('a, button, div, span', has_text=re.compile(r'^Work Orders', re.IGNORECASE)).filter(has_not=self.page.locator(':hidden')).first
+                if work_orders_tab.is_visible():
+                    tab_text = work_orders_tab.inner_text()
+                    # Only click and check if there are actually work orders (e.g., not "Work Orders (0)")
+                    if "(0)" not in tab_text:
+                        work_orders_tab.click()
+                        time.sleep(2) # Wait for work orders list to load
+                        
+                        open_badge = self.page.get_by_text("Open", exact=True).first
+                        if open_badge.is_visible():
+                            log.info("  Found an existing Open Work Order. Skipping this vehicle to prevent duplicates.")
+                            return
+            except Exception as e:
+                log.warning(f"  Could not verify existing work orders, proceeding anyway: {e}")
+            
+            # 2. Navigate to Service Reminders tab
+            log.info("  Navigating to Service Reminders tab...")
+            service_tab = self.page.locator('a, button, div', has_text=re.compile(r'^Service Reminders', re.IGNORECASE)).first
             service_tab.wait_for(state="visible", timeout=10000)
             service_tab.click()
             
