@@ -170,15 +170,17 @@ class ServiceBot:
             # 1. Check for existing open work orders
             log.info("  Checking for existing open work orders...")
             try:
-                work_orders_tab = self.page.locator('a, button, div, span', has_text=re.compile(r'^Work Orders', re.IGNORECASE)).filter(has_not=self.page.locator(':hidden')).first
+                # Remove strict start boundary '^' to handle leading whitespace/padding
+                work_orders_tab = self.page.locator('a, button, div, span, li', has_text=re.compile(r'Work Orders', re.IGNORECASE)).filter(has_not=self.page.locator(':hidden')).first
                 if work_orders_tab.is_visible():
                     tab_text = work_orders_tab.inner_text()
                     # Only click and check if there are actually work orders (e.g., not "Work Orders (0)")
                     if "(0)" not in tab_text:
-                        work_orders_tab.click()
+                        work_orders_tab.click(timeout=5000)
                         time.sleep(2) # Wait for work orders list to load
                         
-                        open_badge = self.page.get_by_text("Open", exact=True).first
+                        # Use regex with whitespace tolerance in case the badge has padding like " Open "
+                        open_badge = self.page.locator('*:visible', has_text=re.compile(r'^\s*Open\s*$', re.IGNORECASE)).first
                         if open_badge.is_visible():
                             log.info("  Found an existing Open Work Order. Skipping this vehicle to prevent duplicates.")
                             return
