@@ -61,7 +61,12 @@ if __name__ == "__main__":
         # Schedule the job to run every day at 8:00 AM
         scheduler.add_job(run_job, 'cron', hour=8, minute=0)
         
-        log.info("Scheduler is running. Waiting for 08:00 AM...")
+        log.info("Scheduler configured. Running initial startup job...")
+        
+        # Run once immediately on startup
+        run_job(is_manual_run=False)
+        
+        log.info("Initial startup job complete. Scheduler is now waiting for next 08:00 AM...")
         try:
             scheduler.start()
         except (KeyboardInterrupt, SystemExit):
