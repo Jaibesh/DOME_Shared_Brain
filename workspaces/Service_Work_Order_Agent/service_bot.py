@@ -238,9 +238,23 @@ class ServiceBot:
             confirm_btn.wait_for(state="visible", timeout=5000)
             confirm_btn.click()
             
-            # Wait for Work Order Details page to load
-            log.info("  Waiting for Work Order Details...")
-            self.page.wait_for_url("**/work-orders/**", timeout=15000)
+            # Wait for Work Order Details page or List page to load
+            log.info("  Waiting for Work Order navigation...")
+            self.page.wait_for_url(re.compile(r".*/work-orders.*"), timeout=15000)
+            
+            if self.page.url.rstrip('/').endswith('work-orders'):
+                log.info("  Redirected to Work Orders list. Opening the newly created work order...")
+                # Wait for the table/list to load
+                self.page.wait_for_selector('a[href*="/work-orders/"]', timeout=10000)
+                time.sleep(1) # Let React settle
+                
+                # Click the first work order in the list (the one we just created)
+                first_wo_link = self.page.locator('a[href*="/work-orders/"]').first
+                first_wo_link.click()
+                
+                # Wait to enter the details page
+                self.page.wait_for_url(re.compile(r".*/work-orders/.*"), timeout=10000)
+            
             time.sleep(3) # Give it time to render tasks
             
             # Look for Engine oil & filter replace
