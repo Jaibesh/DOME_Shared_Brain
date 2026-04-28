@@ -256,6 +256,12 @@ class ServiceBot:
                 
         except Exception as e:
             log.error(f"  Failed processing vehicle {vehicle_url}: {e}")
+            try:
+                screenshot_path = Path(__file__).parent / "logs" / f"error_vehicle_{int(time.time())}.png"
+                self.page.screenshot(path=str(screenshot_path))
+                log.info(f"  Error screenshot saved to {screenshot_path}")
+            except:
+                pass
 
     def _inject_differential_service(self):
         """Updates the work order to add the Front Differential Case Fluid service."""
