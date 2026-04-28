@@ -230,18 +230,15 @@ class ServiceBot:
             log.info("  Creating Work Order...")
             time.sleep(2) # Give React time to render
             
-            # 1. Try to click the Actions dropdown first (in case Create work orders is hidden inside)
+            # Click Create work orders button directly
             try:
-                actions_btn = self.page.locator('button', has_text=re.compile('Actions', re.IGNORECASE)).last
-                if actions_btn.is_visible():
-                    actions_btn.click(timeout=3000)
-                    time.sleep(1) # Wait for animation
+                # Most robust way: look for a button containing the text
+                create_btn = self.page.locator('button', has_text=re.compile('Create work orders', re.IGNORECASE)).filter(has_not=self.page.locator(':hidden')).last
+                create_btn.click(timeout=5000)
             except:
-                pass # If it fails, maybe Create work orders is already visible on screen!
-            
-            # 2. Click Create work orders (using get_by_text to catch ANY html tag: div, span, button, a, li)
-            create_btn = self.page.get_by_text('Create work orders', exact=False).last
-            create_btn.click()
+                # Fallback: just look for any visible text
+                create_btn = self.page.get_by_text('Create work orders', exact=False).last
+                create_btn.click(timeout=5000)
             
             # Confirm modal
             confirm_btn = self.page.locator('button:visible', has_text=re.compile('^Create$', re.IGNORECASE)).first
