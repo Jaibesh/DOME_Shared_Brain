@@ -90,8 +90,11 @@ class ServiceBot:
         
         # Wait for table rows to actually render (data fetched) BEFORE clicking pagination
         log.info("Waiting for vehicle table data to load...")
-        self.page.wait_for_selector('table tbody tr, .list-group-item', timeout=20000)
-        time.sleep(2) # Give React a moment to settle
+        try:
+            self.page.wait_for_load_state("networkidle", timeout=10000)
+        except:
+            pass # Continue even if networkidle times out
+        self.page.wait_for_selector('a, button', timeout=10000) # Ensure DOM is interactive
         
         # Change results per page to 100
         log.info("Setting results per page to 100...")
@@ -102,11 +105,15 @@ class ServiceBot:
             time.sleep(3) # Wait for reload
         else:
             # Might be a custom styled dropdown
-            per_page_btn = self.page.locator('button', has_text=re.compile('Results per page')).first
+            per_page_btn = self.page.locator('button', has_text=re.compile('Results per page|10|25')).last
             if per_page_btn.is_visible():
                 per_page_btn.click()
                 time.sleep(1) # Wait for dropdown menu animation
-                self.page.locator('li, div[role="option"]', has_text="100").first.click()
+                try:
+                    self.page.get_by_text("100", exact=True).last.click(timeout=5000)
+                except:
+                    # Fallback if exact=True fails
+                    self.page.locator('text="100"').last.click(timeout=5000)
                 time.sleep(3) # Wait for table reload
 
     def _process_fleet(self):
@@ -119,24 +126,31 @@ class ServiceBot:
         # Collect links to all vehicles that have a badge indicating service is due
         # Badges usually contain text like "Past Due Services" or "Service Due Soon"
         
-        # Try to find the rows
-        rows = self.page.locator('table tbody tr, .list-group-item').all()
+        # Try to find the rows using a very broad selector
+        rows = self.page.locator('tr, div[role="row"], li, .card, div[class*="row"]').all()
         vehicle_urls = []
         
+        log.info(f"Scanning {len(rows)} potential DOM rows for service badges...")
+        
         for row in rows:
-            # Check for badges
-            text_content = row.inner_text().lower()
-            if "past due service" in text_content or "service due soon" in text_content:
-                # Find the link to the vehicle details
-                link = row.locator('a').first
-                if link.is_visible():
-                    url = link.get_attribute('href')
-                    if url:
-                        # Convert to absolute URL if relative
-                        if not url.startswith('http'):
-                            base_url = self.page.url.split('/vehicles')[0]
-                            url = base_url + url
-                        vehicle_urls.append(url)
+            try:
+                text_content = row.inner_text().lower()
+                if "past due" in text_content or "due soon" in text_content:
+                    # Look for any link in this row that points to a vehicle
+                    link = row.locator('a[href*="/vehicles/"]').first
+                    if not link.is_visible():
+                        # Fallback to the first link if no specific vehicle link is found
+                        link = row.locator('a').first
+                        
+                    if link.is_visible():
+                        url = link.get_attribute('href')
+                        if url and '/vehicles/' in url:
+                            if not url.startswith('http'):
+                                base_url = self.page.url.split('/vehicles')[0]
+                                url = base_url + url
+                            vehicle_urls.append(url)
+            except Exception:
+                pass
         
         log.info(f"Found {len(vehicle_urls)} vehicles requiring service attention.")
         
