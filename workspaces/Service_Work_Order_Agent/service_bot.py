@@ -241,13 +241,26 @@ class ServiceBot:
                 create_btn.click(timeout=5000, force=True)
             
             # Confirm modal
+            log.info("  Confirming modal...")
             time.sleep(1) # Let modal animate
+            
+            # Find the active dialog to ensure we don't accidentally click a button underneath it
+            dialog = self.page.locator('div[role="dialog"]').last
+            if not dialog.is_visible(timeout=2000):
+                # Fallback to entire page if MPOWR doesn't use standard dialog roles
+                dialog = self.page
+                
             try:
-                confirm_btn = self.page.locator('button:visible', has_text=re.compile('Create', re.IGNORECASE)).last
-                confirm_btn.click(timeout=10000)
+                # Look for typical confirmation button text inside the modal
+                confirm_btn = dialog.locator('button:visible', has_text=re.compile('Confirm|Create|Submit|Save|Yes', re.IGNORECASE)).last
+                confirm_btn.click(timeout=5000)
             except:
-                confirm_btn = self.page.get_by_text('Create', exact=False).last
-                confirm_btn.click(timeout=10000)
+                # If all else fails, forcefully click whatever button inside the modal IS NOT "Cancel"
+                try:
+                    confirm_btn = dialog.locator('button:visible').filter(has_not_text=re.compile('Cancel|No|Close', re.IGNORECASE)).last
+                    confirm_btn.click(timeout=5000, force=True)
+                except Exception as e:
+                    log.error(f"  Failed to confirm modal: {e}")
             
             # Wait for Work Order Details page or List page to load
             log.info("  Waiting for Work Order navigation...")
