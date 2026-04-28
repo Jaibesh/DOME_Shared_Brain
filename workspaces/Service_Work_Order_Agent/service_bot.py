@@ -252,12 +252,22 @@ class ServiceBot:
             
             # ── Step 5: Wait for work order to be created ──
             # MPOWR does NOT show a confirmation modal - it creates the work order directly.
-            # Wait for the page to settle after creation.
             log.info("  Work order creation initiated. Waiting for page to settle...")
-            time.sleep(5) # Give MPOWR time to process and update the page
+            time.sleep(5) # Give MPOWR time to process
             
-            # ── Step 6: Navigate to Work Orders tab to find the new work order ──
-            log.info("  Navigating to Work Orders tab to verify and open the new work order...")
+            # Take a post-creation screenshot for verification
+            try:
+                post_click_path = Path(__file__).parent / "logs" / f"post_create_{int(time.time())}.png"
+                self.page.screenshot(path=str(post_click_path))
+            except:
+                pass
+            
+            # ── Step 6: Reload the vehicle page fresh, then go to Work Orders tab ──
+            log.info("  Reloading vehicle page to verify work order creation...")
+            self.page.goto(vehicle_url, wait_until='load', timeout=20000)
+            time.sleep(3)
+            
+            # Click the Work Orders tab
             wo_tab = self.page.get_by_text(re.compile(r'Work Orders', re.IGNORECASE)).first
             wo_tab.click(timeout=5000)
             time.sleep(3) # Wait for list to load
@@ -266,6 +276,7 @@ class ServiceBot:
             try:
                 first_wo_link = self.page.locator('a[href*="/work-orders/"]').first
                 if first_wo_link.is_visible(timeout=5000):
+                    log.info("  ✅ Work order created successfully! Opening details...")
                     first_wo_link.click(timeout=5000)
                     time.sleep(3) # Give it time to render the work order details
                     
@@ -277,10 +288,9 @@ class ServiceBot:
                     else:
                         log.info("  No engine oil replacement found. Work order complete.")
                 else:
-                    log.info("  Could not find work order link. Work order may have been created successfully.")
+                    log.warning("  Could not find work order link after reload. Work order may not have been created.")
             except Exception as e:
                 log.warning(f"  Could not open work order details for differential injection: {e}")
-                log.info("  Work order was likely created successfully.")
                 
         except Exception as e:
             log.error(f"  Failed processing vehicle {vehicle_url}: {e}")
