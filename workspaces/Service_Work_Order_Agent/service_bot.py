@@ -170,8 +170,8 @@ class ServiceBot:
             # 1. Check for existing open work orders
             log.info("  Checking for existing open work orders...")
             try:
-                # Remove strict start boundary '^' to handle leading whitespace/padding
-                work_orders_tab = self.page.locator('a, button, div, span, li', has_text=re.compile(r'Work Orders', re.IGNORECASE)).filter(has_not=self.page.locator(':hidden')).first
+                # Use native :visible pseudo-class instead of invalid :hidden filter
+                work_orders_tab = self.page.locator(':visible', has_text=re.compile(r'Work Orders', re.IGNORECASE)).last
                 if work_orders_tab.is_visible():
                     tab_text = work_orders_tab.inner_text()
                     # Only click and check if there are actually work orders (e.g., not "Work Orders (0)")
@@ -285,7 +285,7 @@ class ServiceBot:
             # Now we must navigate to the newly created work order to inject the Differential Service.
             # MPOWR might not auto-redirect, so we manually go to the Work Orders tab.
             log.info("  Navigating to Work Orders tab to open the new work order...")
-            work_orders_tab = self.page.locator('a, button, div, span, li', has_text=re.compile(r'Work Orders', re.IGNORECASE)).filter(has_not=self.page.locator(':hidden')).first
+            work_orders_tab = self.page.locator(':visible', has_text=re.compile(r'Work Orders', re.IGNORECASE)).last
             work_orders_tab.click(timeout=5000)
             time.sleep(2) # Wait for list to load
             
