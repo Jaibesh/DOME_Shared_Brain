@@ -1250,19 +1250,21 @@ class MpowrUpdaterBot:
             self._screenshot(f"DIAG_AFTER_TIME_SELECTION")
 
     def _handle_vehicle_selection(self, vehicle_name: str, qty: str):
-        """Sets the quantity dropdown for the specific vehicle card auto-loaded by MPOWR.
+        """Sets the quantity for the specific vehicle card auto-loaded by MPOWR.
         
         CRITICAL: Uses exact=True text matching to prevent 'RZR PRO S' from
         matching 'RZR PRO S4'. Falls back to regex word-boundary matching.
+        
+        UI Update (April 2026): MPOWR replaced <select> dropdowns with a 
+        '+ Add Vehicle' button that reveals '- N +' quantity selectors.
         """
         if not vehicle_name:
             print("  ⚠️ No vehicle mapped")
             return
 
+        qty_int = int(qty)
+
         try:
-            # Strategy: Find DIVs that contain BOTH the exact vehicle name AND a <select>.
-            # Use exact=True first to prevent "RZR PRO S" from matching "RZR PRO S4"
-            
             # Primary: exact match (prevents "RZR PRO S" from matching "RZR PRO S4")
             text_locator = self._page.get_by_text(vehicle_name, exact=True)
             if text_locator.count() == 0:
@@ -1281,30 +1283,89 @@ class MpowrUpdaterBot:
                     print(f"  ❌ Vehicle card '{vehicle_name}' not found on page")
                     return
 
-            # Find the card wrapper that contains both the text AND a select dropdown
+            # Find the card wrapper: a div containing the text AND a button
             cards = self._page.locator("div").filter(
                 has=text_locator.first
             ).filter(
-                has=self._page.locator("select")
+                has=self._page.locator("button")
             )
             
-            # The 'last' element is the deepest nested div (the card wrapper itself)
+            # The 'last' element is usually the deepest nested div (the card wrapper itself)
             card = cards.last
-            if card.is_visible():
-                select_el = card.locator("select").first
-                
-                if select_el.input_value() != qty:
-                    select_el.select_option(value=qty)
-                    print(f"  ✅ Set {vehicle_name} quantity to {qty}")
-                    
-                    # Dismiss any AdventureAssure modal that triggers on quantity change
+            if not card.is_visible():
+                print(f"  ❌ Vehicle card wrapper not visible for {vehicle_name}")
+                return
+
+            # Legacy <select> support (in case MPOWR uses it on some products)
+            select_el = card.locator("select").first
+            if select_el.is_visible():
+                if select_el.input_value() != str(qty_int):
+                    select_el.select_option(value=str(qty_int))
+                    print(f"  ✅ Set {vehicle_name} quantity to {qty_int} via <select>")
                     time.sleep(1)
                     self._page.keyboard.press("Escape")
                 else:
-                    print(f"  ✅ {vehicle_name} quantity already {qty}")
+                    print(f"  ✅ {vehicle_name} quantity already {qty_int}")
                 return
+
+            # NEW UI Support: "+ Add Vehicle" button and "- N +" controls
+            if qty_int == 0:
+                # If target is 0, we'll let The Great Reset handle it, or we could click the trash can here
+                print(f"  ✅ {vehicle_name} target quantity is 0")
+                return
+
+            add_vehicle_btn = card.locator("button").filter(has_text=re.compile(r"Add Vehicle", re.IGNORECASE)).first
+            plus_btn = card.locator("button").filter(has_text="+").first
             
-            print(f"  ❌ Failed to locate the quantity dropdown next to {vehicle_name}")
+            current_qty = 0
+            
+            if add_vehicle_btn.is_visible():
+                current_qty = 0
+            elif plus_btn.is_visible():
+                try:
+                    # Usually the text inside the control area is something like "- 2 +"
+                    ctrl_text = card.inner_text()
+                    matches = re.findall(r'-\s*(\d+)\s*\+', ctrl_text)
+                    if matches:
+                        current_qty = int(matches[0])
+                    else:
+                        current_qty = 1 # Fallback assumption
+                except:
+                    current_qty = 1
+            else:
+                print(f"  ❌ Failed to locate quantity controls next to {vehicle_name}")
+                return
+
+            if current_qty == qty_int:
+                print(f"  ✅ {vehicle_name} quantity already {qty_int}")
+                return
+
+            print(f"  [Vehicle] {vehicle_name} is currently at {current_qty}, target is {qty_int}")
+
+            # If it's 0, we must click "Add Vehicle" first
+            if current_qty == 0 and qty_int > 0:
+                add_vehicle_btn.click()
+                time.sleep(1.5)
+                current_qty = 1
+                
+                # Re-fetch the plus button since DOM might have changed
+                plus_btn = card.locator("button").filter(has_text="+").first
+
+            # Now click '+' to reach the target quantity
+            while current_qty < qty_int:
+                if plus_btn.is_visible():
+                    plus_btn.click()
+                    time.sleep(1.5)
+                    current_qty += 1
+                else:
+                    print(f"  ⚠️ Could not find '+' button to increase {vehicle_name} to {qty_int}")
+                    break
+
+            print(f"  ✅ Set {vehicle_name} quantity to {current_qty}")
+            
+            # Dismiss any AdventureAssure modal that triggers on quantity change
+            time.sleep(1)
+            self._page.keyboard.press("Escape")
             
         except Exception as e:
             print(f"  ❌ Vehicle selection error: {e}")
@@ -2010,44 +2071,174 @@ class MpowrUpdaterBot:
             else:
                 raise ValueError("'Cancel Reservation' not found in Actions dropdown.")
 
-            # 3. Choose Customer Reason
-            try:
-                # The Cancelation Reason is a Headless UI Listbox. Click the div right below the label.
-                reason_box = self._page.locator("text='Cancelation Reason'").locator("xpath=following-sibling::div").first
-                if not reason_box.is_visible():
-                    reason_box = self._page.locator("div[role='listbox'], div[role='combobox'], div[role='button']").filter(has_text="Cancelation Reason").first
-                
-                reason_box.click()
-                time.sleep(1)
-                
-                customer_reason_option = self._page.get_by_text("Customer Reason", exact=True).first
-                customer_reason_option.click()
-                time.sleep(1)
-            except Exception as e:
-                log.warning(f"Could not easily select Customer Reason: {e}")
+            # 3. Choose "Customer Reason" (MANDATORY — cancel will fail without it)
+            #    The cancel dialog has a CUSTOM dropdown (not a native <select>)
+            #    that opens a MODAL DIALOG when clicked. The modal contains clickable
+            #    text options: Bad Weather, Overbooked Fleet, Unplanned Vehicle Maintenance,
+            #    Customer Reason. We must click the trigger, wait for modal, click option.
+            reason_selected = False
+            for reason_attempt in range(3):
+                if reason_selected:
+                    break
 
-            # 4. Uncheck Cancelation Fee (CRITICAL)
-            fee_checkbox = self._page.get_by_label("Charge cancelation fee", exact=False)
-            if fee_checkbox.count() > 0:
-                if fee_checkbox.is_checked():
+                try:
+                    # Wait for the cancel panel to fully render
+                    self._page.wait_for_selector("text='Cancelation Reason'", timeout=5000)
+                    time.sleep(1)
+
+                    # The dropdown trigger is the clickable element right below "Cancelation Reason" text.
+                    # It looks like a select box with up/down arrows but is actually a custom component.
+                    # Try multiple ways to find and click it:
+
+                    trigger_clicked = False
+
+                    # Method 1: Find the styled div/button that follows the "Cancelation Reason" label
+                    # It's typically a bordered box with chevron arrows
+                    trigger_candidates = [
+                        # Direct sibling of the label text
+                        self._page.locator("text='Cancelation Reason'").locator("xpath=following-sibling::*[1]").first,
+                        # Any clickable element right after the label
+                        self._page.locator("text='Cancelation Reason'").locator("xpath=following::div[contains(@class,'select') or contains(@class,'dropdown') or contains(@class,'trigger') or contains(@class,'input') or contains(@class,'border')][1]").first,
+                        # Generic: the next interactive-looking element after the label
+                        self._page.locator("text='Cancelation Reason'").locator("xpath=following::*[@role='button' or @role='combobox' or @role='listbox' or @tabindex][1]").first,
+                    ]
+
+                    for trigger in trigger_candidates:
+                        try:
+                            if trigger.is_visible(timeout=1500):
+                                trigger.click()
+                                time.sleep(1.5)
+                                trigger_clicked = True
+                                log.debug(f"  [Cancel] Clicked trigger via candidate selector")
+                                break
+                        except Exception:
+                            continue
+
+                    # Fallback: click any visible element between "Cancelation Reason" and "Charge cancelation fee"
+                    if not trigger_clicked:
+                        try:
+                            # Just click the area right after the "Cancelation Reason" text
+                            reason_label = self._page.locator("text='Cancelation Reason'").first
+                            box = reason_label.bounding_box()
+                            if box:
+                                # Click 200px below the label text center, within the dropdown area
+                                self._page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] + 25)
+                                time.sleep(1.5)
+                                trigger_clicked = True
+                                log.debug(f"  [Cancel] Clicked trigger via coordinate click below label")
+                        except Exception as e:
+                            log.debug(f"  [Cancel] Coordinate click failed: {e}")
+
+                    if not trigger_clicked:
+                        log.warning(f"  [Cancel] Could not click reason dropdown trigger (attempt {reason_attempt + 1})")
+                        time.sleep(2)
+                        continue
+
+                    # Now the modal should be open with options like "Customer Reason"
+                    # Wait for "Customer Reason" text to become visible
+                    customer_opt = self._page.get_by_text("Customer Reason", exact=True).first
+                    try:
+                        customer_opt.wait_for(state="visible", timeout=5000)
+                        customer_opt.click()
+                        time.sleep(1)
+                        reason_selected = True
+                        log.info(f"  ✅ Selected 'Customer Reason' (attempt {reason_attempt + 1})")
+                    except Exception:
+                        # Maybe the modal opened but "Customer Reason" isn't exact — try partial
+                        try:
+                            customer_opt2 = self._page.locator("text=/[Cc]ustomer/").last
+                            customer_opt2.wait_for(state="visible", timeout=2000)
+                            customer_opt2.click()
+                            time.sleep(1)
+                            reason_selected = True
+                            log.info(f"  ✅ Selected 'Customer Reason' via partial match (attempt {reason_attempt + 1})")
+                        except Exception:
+                            # Close modal if it's open (press X or Escape) before retry
+                            try:
+                                self._page.keyboard.press("Escape")
+                            except Exception:
+                                pass
+                            log.debug(f"  [Cancel] Customer Reason option not found in modal")
+
+                except Exception as e:
+                    log.debug(f"  [Cancel] Attempt {reason_attempt + 1} error: {e}")
+
+                if not reason_selected:
+                    log.warning(f"  [Cancel] Reason selection attempt {reason_attempt + 1}/3 failed. Retrying...")
+                    time.sleep(2)
+
+            if not reason_selected:
+                log.error("  ❌ Could not select 'Customer Reason' after 3 attempts. Cancel cannot proceed safely.")
+                self._screenshot(f"error_cancel_no_reason_{mpwr_id}")
+                if self._owns_browser:
+                    self._close_browser()
+                return False
+
+            # 4. Uncheck Cancelation Fee (CRITICAL — we NEVER charge a fee)
+            try:
+                fee_checkbox = self._page.get_by_label("Charge cancelation fee", exact=False)
+                if fee_checkbox.count() > 0 and fee_checkbox.is_checked():
                     fee_checkbox.uncheck()
                     time.sleep(0.5)
-            else:
-                # Fallback to checkbox input nearest to the text
-                alt_fee_box = self._page.locator("input[type='checkbox']").last
-                start_val = alt_fee_box.is_checked()
-                if start_val:
-                    alt_fee_box.uncheck()
-                    time.sleep(0.5)
+                    log.info("  ✅ Unchecked cancelation fee")
+                elif fee_checkbox.count() == 0:
+                    # Fallback: find any checkbox in the cancel dialog
+                    alt_fee_box = self._page.locator("input[type='checkbox']").last
+                    if alt_fee_box.count() > 0 and alt_fee_box.is_checked():
+                        alt_fee_box.uncheck()
+                        time.sleep(0.5)
+                        log.info("  ✅ Unchecked cancelation fee (fallback)")
+            except Exception as e:
+                log.warning(f"  ⚠️ Fee checkbox handling (non-fatal): {e}")
 
             # 5. Submit Cancel
             submit_btn = self._page.get_by_role("button", name="Cancel Order").first
             if self.dry_run:
                 log.info(f"DRY RUN: Would have effectively cancelled {mpwr_id}")
             else:
+                # Verify the button is actually clickable before proceeding
+                try:
+                    submit_btn.wait_for(state="visible", timeout=5000)
+                except Exception:
+                    log.error(f"  ❌ 'Cancel Order' button not visible — cancel dialog may be blocked (missing reason?)")
+                    self._screenshot(f"error_cancel_btn_missing_{mpwr_id}")
+                    if self._owns_browser:
+                        self._close_browser()
+                    return False
+
                 submit_btn.click()
                 time.sleep(3)
-                log.info(f"✅ Successfully Cancelled {mpwr_id} in MPOWR")
+
+                # POST-CANCEL VERIFICATION: Confirm the cancel actually took effect
+                # After a successful cancel, MPOWR redirects back to the order page
+                # with a "Canceled" status badge visible.
+                cancel_verified = False
+                try:
+                    canceled_badge = self._page.locator("span, div").filter(
+                        has_text=re.compile(r"^Canceled$|^Cancelled$", re.IGNORECASE)
+                    ).first
+                    canceled_badge.wait_for(state="visible", timeout=8000)
+                    cancel_verified = True
+                except Exception:
+                    pass
+
+                if not cancel_verified:
+                    # Fallback: check for a success toast notification
+                    try:
+                        success_toast = self._page.locator("text=/successfully|has been cancel/i").first
+                        success_toast.wait_for(state="visible", timeout=3000)
+                        cancel_verified = True
+                    except Exception:
+                        pass
+
+                if cancel_verified:
+                    log.info(f"✅ Successfully Cancelled {mpwr_id} in MPOWR")
+                else:
+                    log.error(f"  ❌ Cancel button was clicked but 'Canceled' badge not detected for {mpwr_id}. Cancel may have silently failed.")
+                    self._screenshot(f"error_cancel_unverified_{mpwr_id}")
+                    if self._owns_browser:
+                        self._close_browser()
+                    return False
 
             if self._owns_browser:
                 self._close_browser()
@@ -2292,48 +2483,47 @@ class MpowrUpdaterBot:
 
             # 5. THE GREAT RESET: Zero out all pre-populated vehicle quantities before adding new ones
             # CRIT-1 FIX: Uses same DOM traversal as _handle_vehicle_selection() to find
-            # ONLY vehicle quantity dropdowns. The old wildcard "select" matched every <select>
-            # on the page including time pickers, insurance, and listing selectors.
+            # ONLY vehicle quantity dropdowns.
+            # UI Update (April 2026): MPOWR replaced <select> with '+ Add Vehicle' and '- N +'.
             try:
                 log.info("  [Creator Bot] Executing 'Great Reset' to zero out existing vehicle selections...")
                 
-                # Find all vehicle cards: divs that contain BOTH a vehicle name AND a <select>
-                # This mirrors the proven logic in _handle_vehicle_selection()
+                # Find all vehicle cards: divs that contain a vehicle name
                 vehicle_cards = self._page.locator("div").filter(
-                    has=self._page.locator("select")
-                ).filter(
                     has=self._page.get_by_text(re.compile(
                         r'RZR|PRO S|PRO R|XPEDITION|XP S|XP4',
                         re.IGNORECASE
                     ))
+                ).filter(
+                    has=self._page.locator("button")
                 ).all()
                 
                 reset_count = 0
                 for card in vehicle_cards:
                     try:
+                        # If a legacy <select> exists, zero it out
                         sel = card.locator("select").first
-                        if sel.is_visible():
+                        if sel.is_visible(timeout=100):
                             val = sel.input_value()
                             if val != '0' and val != '':
                                 sel.select_option("0")
                                 sel.evaluate("el => el.blur()")
                                 time.sleep(0.3)
                                 reset_count += 1
-                    except Exception as card_err:
-                        try:
-                            # Fallback if MPOWR removes native select elements and uses Headless UI
-                            sel = card.locator("select").first
-                            sel.click()
-                            time.sleep(0.1)
-                            self._page.keyboard.press("0")
-                            self._page.keyboard.press("Enter")
-                            sel.evaluate("el => el.blur()")
-                            time.sleep(0.2)
+                                continue
+                                
+                        # New UI: Find the minus button and click it until gone
+                        minus_btn = card.locator("button").filter(has_text="-").first
+                        if minus_btn.is_visible(timeout=100):
+                            while minus_btn.is_visible(timeout=500):
+                                minus_btn.click()
+                                time.sleep(0.5)
                             reset_count += 1
-                        except:
-                            continue
+                            
+                    except Exception as card_err:
+                        continue
                 
-                log.info(f"  [Creator Bot] Great Reset complete: zeroed {reset_count} vehicle dropdown(s).")
+                log.info(f"  [Creator Bot] Great Reset complete: zeroed {reset_count} vehicle selection(s).")
             except Exception as e:
                 log.warning(f"  ⚠️ Error during The Great Reset: {e}")
 

@@ -262,6 +262,18 @@ def process_webhooks():
                                     webhook_payload=payload,
                                 )
                                 
+                                # FIX: map_legacy_to_dashboard re-runs _build_single_payload with
+                                # an empty Ticket Type, which causes it to error out and hit the
+                                # BUG-4 fallback (blanking mpowr_vehicle, mpowr_activity).
+                                # Override with the correct values from primary_p, which was already
+                                # computed from the full webhook payload via build_payloads_from_webhook.
+                                if primary_p.get("mpowr_vehicle"):
+                                    dashboard_row["Vehicle Model"] = primary_p["mpowr_vehicle"]
+                                if primary_p.get("mpowr_activity"):
+                                    dashboard_row["Activity Internal"] = primary_p["mpowr_activity"]
+                                if primary_p.get("vehicle_qty"):
+                                    dashboard_row["Vehicle Qty"] = primary_p["vehicle_qty"]
+                                
                                 # Explicit mapping from Dashboard keys to Supabase columns
                                 _DASH_TO_SUPABASE = {
                                     "TW Confirmation": "tw_confirmation",
@@ -349,6 +361,16 @@ def process_webhooks():
                                         snake_row[sb_col] = str(v) if v else None
                                     else:
                                         snake_row[sb_col] = str(v) if v is not None else ""
+                                
+                                # Normalize activity_date from MM/DD/YYYY to YYYY-MM-DD
+                                # to match the Updater's expected format and prevent false deltas
+                                for date_col in ("activity_date", "end_date"):
+                                    if date_col in snake_row and "/" in str(snake_row[date_col]):
+                                        try:
+                                            from datetime import datetime as _dt
+                                            snake_row[date_col] = _dt.strptime(snake_row[date_col], "%m/%d/%Y").strftime("%Y-%m-%d")
+                                        except (ValueError, TypeError):
+                                            pass
                                 
                                 # Build guest_name from First + Last
                                 first = str(dashboard_row.get("First Name", "")).strip()

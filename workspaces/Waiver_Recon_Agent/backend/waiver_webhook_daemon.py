@@ -197,7 +197,7 @@ def process_waiver_completed(body: dict, db_record_id: str):
         else:
             raise ValueError(f"Failed to increment waiver count for {target_conf}")
     else:
-        raise ValueError(f"No matching reservation exists in Supabase for '{guest_name}' (Order: {order_id})")
+        raise ValueError(f"No matching reservation exists in Supabase for '{guest_name}' (Order: {order_id}). Tip: Verify this order ID is populated in the 'tw_order_id' or 'tw_booking_ids' column for this guest!")
 
 def run_polling_cycle():
     """Polls recon_webhooks for pending tasks and processes them."""
