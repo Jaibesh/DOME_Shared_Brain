@@ -241,9 +241,13 @@ class ServiceBot:
                 create_btn.click(timeout=5000)
             
             # Confirm modal
-            confirm_btn = self.page.locator('button:visible', has_text=re.compile('^Create$', re.IGNORECASE)).first
-            confirm_btn.wait_for(state="visible", timeout=5000)
-            confirm_btn.click()
+            time.sleep(1) # Let modal animate
+            try:
+                confirm_btn = self.page.locator('button:visible', has_text=re.compile('Create', re.IGNORECASE)).last
+                confirm_btn.click(timeout=10000)
+            except:
+                confirm_btn = self.page.get_by_text('Create', exact=False).last
+                confirm_btn.click(timeout=10000)
             
             # Wait for Work Order Details page or List page to load
             log.info("  Waiting for Work Order navigation...")
