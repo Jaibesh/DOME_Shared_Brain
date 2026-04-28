@@ -262,15 +262,21 @@ class ServiceBot:
             except:
                 pass
             
-            # ── Step 6: Reload the vehicle page fresh, then go to Work Orders tab ──
-            log.info("  Reloading vehicle page to verify work order creation...")
-            self.page.goto(vehicle_url, wait_until='load', timeout=20000)
+            # ── Step 6: Navigate directly to the vehicle's Work Orders page ──
+            log.info("  Navigating to vehicle's Work Orders page to verify creation...")
+            # Build the work orders URL from the vehicle URL
+            # e.g., .../vehicles/A-EJA-NGR/details -> .../vehicles/A-EJA-NGR/work-orders
+            wo_url = vehicle_url.split('/details')[0] + '/work-orders'
+            self.page.goto(wo_url, wait_until='load', timeout=20000)
             time.sleep(3)
             
-            # Click the Work Orders tab
-            wo_tab = self.page.get_by_text(re.compile(r'Work Orders', re.IGNORECASE)).first
-            wo_tab.click(timeout=5000)
-            time.sleep(3) # Wait for list to load
+            # Take a screenshot so we can see what the Work Orders page looks like
+            try:
+                wo_page_path = Path(__file__).parent / "logs" / f"wo_page_{int(time.time())}.png"
+                self.page.screenshot(path=str(wo_page_path))
+                log.info(f"  Work Orders page screenshot: {wo_page_path}")
+            except:
+                pass
             
             # Click the top-most (newest) work order link in the list
             try:
