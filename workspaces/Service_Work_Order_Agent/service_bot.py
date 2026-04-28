@@ -222,14 +222,15 @@ class ServiceBot:
                 
             # Create Work Order
             log.info("  Creating Work Order...")
-            actions_btn = self.page.locator('button', has_text=re.compile('^Actions$')).first
+            time.sleep(1) # Let the Actions button appear after checking boxes
+            actions_btn = self.page.locator('button:visible', has_text=re.compile('Actions', re.IGNORECASE)).last
             actions_btn.click()
             
             create_btn = self.page.locator('button, a', has_text=re.compile('Create work orders', re.IGNORECASE)).first
             create_btn.click()
             
             # Confirm modal
-            confirm_btn = self.page.locator('button', has_text=re.compile('^Create$', re.IGNORECASE)).first
+            confirm_btn = self.page.locator('button:visible', has_text=re.compile('^Create$', re.IGNORECASE)).first
             confirm_btn.wait_for(state="visible", timeout=5000)
             confirm_btn.click()
             
@@ -253,7 +254,7 @@ class ServiceBot:
         """Updates the work order to add the Front Differential Case Fluid service."""
         
         # Click Actions -> Update
-        actions_btn = self.page.locator('button', has_text=re.compile('^Actions$')).first
+        actions_btn = self.page.locator('button:visible', has_text=re.compile('Actions', re.IGNORECASE)).first
         actions_btn.click()
         
         update_btn = self.page.locator('button, a, li', has_text=re.compile('^Update$', re.IGNORECASE)).first
