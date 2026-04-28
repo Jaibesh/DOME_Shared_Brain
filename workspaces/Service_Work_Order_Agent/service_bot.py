@@ -10,9 +10,9 @@ WORKSPACE_DIR = Path(__file__).parent.parent
 sys.path.append(str(WORKSPACE_DIR))
 
 from shared.mpowr_login import login_to_mpowr
-from shared.bot_logger import get_logger
+from shared.bot_logger import get_bot_logger
 
-log = get_logger("service_bot", str(Path(__file__).parent / "logs" / "service_bot.log"))
+log = get_bot_logger("service_bot", str(Path(__file__).parent / "logs"))
 
 class ServiceBot:
     def __init__(self, headless: bool = True):

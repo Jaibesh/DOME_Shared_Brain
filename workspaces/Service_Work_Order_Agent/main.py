@@ -12,11 +12,11 @@ load_dotenv(env_path)
 WORKSPACE_DIR = Path(__file__).parent.parent
 sys.path.append(str(WORKSPACE_DIR))
 
-from shared.bot_logger import get_logger
+from shared.bot_logger import get_bot_logger
 from shared.slack_notifier import SlackNotifier
 from service_bot import ServiceBot
 
-log = get_logger("service_main", str(Path(__file__).parent / "logs" / "main.log"))
+log = get_bot_logger("service_main", str(Path(__file__).parent / "logs"))
 slack = SlackNotifier("Service_Work_Order_Agent")
 
 def run_job(is_manual_run=False):
