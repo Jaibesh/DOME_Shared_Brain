@@ -163,7 +163,8 @@ class ServiceBot:
 
     def _process_single_vehicle(self, vehicle_url: str):
         try:
-            self.page.goto(vehicle_url, wait_until='networkidle')
+            # Avoid using networkidle as MPOWR may have persistent background analytics/sockets
+            self.page.goto(vehicle_url, wait_until='load', timeout=20000)
             time.sleep(2) # Give React a moment to render tabs
             
             # 1. Check for existing open work orders
