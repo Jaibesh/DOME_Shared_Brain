@@ -230,15 +230,15 @@ class ServiceBot:
             log.info("  Creating Work Order...")
             time.sleep(2) # Give React time to render
             
-            # Click Create work orders button directly
+            # Click Create work order(s) button directly
             try:
-                # Most robust way: look for a button containing the text
-                create_btn = self.page.locator('button', has_text=re.compile('Create work orders', re.IGNORECASE)).filter(has_not=self.page.locator(':hidden')).last
-                create_btn.click(timeout=5000)
+                # Find the deepest visible element containing "Create work order" (handles both singular and plural dynamically)
+                create_btn = self.page.locator(':visible', has_text=re.compile('Create work order', re.IGNORECASE)).last
+                create_btn.click(timeout=10000)
             except:
-                # Fallback: just look for any visible text
-                create_btn = self.page.get_by_text('Create work orders', exact=False).last
-                create_btn.click(timeout=5000)
+                # Fallback: Force click if intercepted
+                create_btn = self.page.locator(':visible', has_text=re.compile('Create work order', re.IGNORECASE)).last
+                create_btn.click(timeout=5000, force=True)
             
             # Confirm modal
             time.sleep(1) # Let modal animate
