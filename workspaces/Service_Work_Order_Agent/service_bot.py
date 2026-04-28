@@ -166,32 +166,9 @@ class ServiceBot:
             self.page.goto(vehicle_url, wait_until='load', timeout=20000)
             time.sleep(3) # Give React a moment to render tabs
             
-            # ── Step 1: Check Work Orders tab for existing open work orders ──
-            log.info("  Checking for existing open work orders...")
-            try:
-                # Click the Work Orders tab (visible in the tab bar: Details | Reservations | Work Orders (N) | ...)
-                wo_tab = self.page.get_by_text(re.compile(r'Work Orders\s*\(\d+\)', re.IGNORECASE)).first
-                if wo_tab.is_visible(timeout=3000):
-                    wo_tab.click(timeout=5000)
-                    time.sleep(2)
-                    
-                    # Look for "Open" badge on any listed work order
-                    page_text = self.page.inner_text('body').lower()
-                    if 'open' in page_text and 'work order' in page_text:
-                        # Verify it's actually an "Open" status badge, not just the word in text
-                        open_badges = self.page.get_by_text('Open', exact=True).all()
-                        for badge in open_badges:
-                            try:
-                                if badge.is_visible(timeout=1000):
-                                    log.info("  Found an existing Open Work Order. Skipping this vehicle to prevent duplicates.")
-                                    return
-                            except:
-                                continue
-            except Exception as e:
-                # Work Orders tab might show (0) or not exist - that's fine, proceed
-                log.info(f"  No existing work orders found (or tab shows 0). Proceeding.")
-            
-            # ── Step 2: Navigate to Service Reminders tab ──
+            # ── Step 1: Navigate directly to Service Reminders tab ──
+            # We do NOT skip vehicles with open work orders at the vehicle level.
+            # Instead, we skip individual tasks that already have "Open Work Order" badges.
             log.info("  Navigating to Service Reminders tab...")
             service_tab = self.page.get_by_text(re.compile(r'Service Reminders', re.IGNORECASE)).first
             service_tab.click(timeout=5000)
