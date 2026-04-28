@@ -30,6 +30,9 @@ start "Waiver Link Agent" cmd /k "cd C:\DOME_CORE\workspaces\Waiver_Recon_Agent\
 echo [6/6] Starting Waiver Webhook (TripWorks) Agent...
 start "Waiver Webhook Agent" cmd /k "cd C:\DOME_CORE\workspaces\Waiver_Recon_Agent\backend && python waiver_webhook_daemon.py"
 
+:: 7. Start Service Work Order Agent
+echo [7/7] Starting Service Work Order Agent...
+start "Service Work Order Agent" cmd /k "cd C:\DOME_CORE\workspaces\Service_Work_Order_Agent && python main.py"
 
 echo.
 echo ===================================================

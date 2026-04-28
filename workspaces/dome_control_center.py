@@ -74,6 +74,14 @@ AGENTS = [
         "cmd": [sys.executable, "waiver_webhook_daemon.py"],
         "color": "#E91E63",  # Pink
     },
+    {
+        "id": "service_bot",
+        "name": "Service Work Order",
+        "desc": "Daily 8 AM mechanic past due work order automation",
+        "cwd": r"C:\DOME_CORE\workspaces\Service_Work_Order_Agent",
+        "cmd": [sys.executable, "main.py"],
+        "color": "#8BC34A",  # Light Green
+    },
 ]
 
 MAX_LOG_LINES = 500  # Per agent — prune oldest when exceeded
