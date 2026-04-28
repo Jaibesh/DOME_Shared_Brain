@@ -195,7 +195,10 @@ class ServiceBot:
                         row_text = parent.inner_text().lower()
                         
                         if "ago" in row_text or "past due" in row_text:
-                            cb.check(force=True)
+                            try:
+                                cb.check(timeout=2000)
+                            except:
+                                cb.locator('xpath=..').click()
                             selected_any = True
                             log.info(f"  Selected Past Due task: {row_text[:50].strip()}...")
                         elif "miles" in row_text:
@@ -206,7 +209,10 @@ class ServiceBot:
                                 try:
                                     miles = int(miles_str)
                                     if miles < 300:
-                                        cb.check(force=True)
+                                        try:
+                                            cb.check(timeout=2000)
+                                        except:
+                                            cb.locator('xpath=..').click()
                                         selected_any = True
                                         log.info(f"  Selected Upcoming task (<300 miles): {miles} miles - {row_text[:50].strip()}...")
                                     else:
@@ -222,11 +228,12 @@ class ServiceBot:
                 
             # Create Work Order
             log.info("  Creating Work Order...")
-            time.sleep(1) # Let the Actions button appear after checking boxes
+            time.sleep(2) # Give React time to render the Actions button
             actions_btn = self.page.locator('button:visible', has_text=re.compile('Actions', re.IGNORECASE)).last
             actions_btn.click()
             
-            create_btn = self.page.locator('button, a', has_text=re.compile('Create work orders', re.IGNORECASE)).first
+            time.sleep(1) # Let the dropdown menu animate open
+            create_btn = self.page.locator('text="Create work orders"').first
             create_btn.click()
             
             # Confirm modal
