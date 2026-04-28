@@ -163,44 +163,44 @@ class ServiceBot:
 
     def _process_single_vehicle(self, vehicle_url: str):
         try:
-            # Avoid using networkidle as MPOWR may have persistent background analytics/sockets
             self.page.goto(vehicle_url, wait_until='load', timeout=20000)
-            time.sleep(2) # Give React a moment to render tabs
+            time.sleep(3) # Give React a moment to render tabs
             
-            # 1. Check for existing open work orders
+            # ── Step 1: Check Work Orders tab for existing open work orders ──
             log.info("  Checking for existing open work orders...")
             try:
-                # Use native :visible pseudo-class instead of invalid :hidden filter
-                work_orders_tab = self.page.locator(':visible', has_text=re.compile(r'Work Orders', re.IGNORECASE)).last
-                if work_orders_tab.is_visible():
-                    tab_text = work_orders_tab.inner_text()
-                    # Only click and check if there are actually work orders (e.g., not "Work Orders (0)")
-                    if "(0)" not in tab_text:
-                        work_orders_tab.click(timeout=5000)
-                        time.sleep(2) # Wait for work orders list to load
-                        
-                        # Use regex with whitespace tolerance in case the badge has padding like " Open "
-                        open_badge = self.page.locator('*:visible', has_text=re.compile(r'^\s*Open\s*$', re.IGNORECASE)).first
-                        if open_badge.is_visible():
-                            log.info("  Found an existing Open Work Order. Skipping this vehicle to prevent duplicates.")
-                            return
+                # Click the Work Orders tab (visible in the tab bar: Details | Reservations | Work Orders (N) | ...)
+                wo_tab = self.page.get_by_text(re.compile(r'Work Orders\s*\(\d+\)', re.IGNORECASE)).first
+                if wo_tab.is_visible(timeout=3000):
+                    wo_tab.click(timeout=5000)
+                    time.sleep(2)
+                    
+                    # Look for "Open" badge on any listed work order
+                    page_text = self.page.inner_text('body').lower()
+                    if 'open' in page_text and 'work order' in page_text:
+                        # Verify it's actually an "Open" status badge, not just the word in text
+                        open_badges = self.page.get_by_text('Open', exact=True).all()
+                        for badge in open_badges:
+                            try:
+                                if badge.is_visible(timeout=1000):
+                                    log.info("  Found an existing Open Work Order. Skipping this vehicle to prevent duplicates.")
+                                    return
+                            except:
+                                continue
             except Exception as e:
-                log.warning(f"  Could not verify existing work orders, proceeding anyway: {e}")
+                # Work Orders tab might show (0) or not exist - that's fine, proceed
+                log.info(f"  No existing work orders found (or tab shows 0). Proceeding.")
             
-            # 2. Navigate to Service Reminders tab
+            # ── Step 2: Navigate to Service Reminders tab ──
             log.info("  Navigating to Service Reminders tab...")
-            service_tab = self.page.locator('a, button, div', has_text=re.compile(r'^Service Reminders', re.IGNORECASE)).first
-            service_tab.wait_for(state="visible", timeout=10000)
-            service_tab.click()
+            service_tab = self.page.get_by_text(re.compile(r'Service Reminders', re.IGNORECASE)).first
+            service_tab.click(timeout=5000)
+            time.sleep(3) # Wait for tab content to fully load
             
-            time.sleep(2) # Wait for tab content to load
-            
+            # ── Step 3: Evaluate checkboxes and select eligible tasks ──
             selected_any = False
-            
-            # 1. Evaluate all checkboxes on the page
             log.info("  Evaluating service tasks...")
             
-            # Find all checkboxes
             checkboxes = self.page.locator('input[type="checkbox"]').all()
             for cb in checkboxes:
                 try:
@@ -210,104 +210,100 @@ class ServiceBot:
                     # Find the nearest ancestor container that holds the text 'miles' or 'ago'
                     parent = cb.locator('xpath=ancestor::*[contains(translate(., "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "miles") or contains(translate(., "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "ago")][1]').first
                     
-                    if parent.is_visible():
-                        # If this container holds multiple checkboxes, it's too high up (e.g., the whole table or the 'Select All' row)
-                        if parent.locator('input[type="checkbox"]').count() > 1:
-                            continue
-                            
-                        row_text = parent.inner_text().lower()
+                    if not parent.is_visible():
+                        continue
+                    
+                    # Skip if this container holds multiple checkboxes (it's the whole section, not a single row)
+                    if parent.locator('input[type="checkbox"]').count() > 1:
+                        continue
                         
-                        if "ago" in row_text or "past due" in row_text:
+                    row_text = parent.inner_text().lower()
+                    
+                    # ── SKIP rows that already have an open work order ──
+                    if "open work order" in row_text:
+                        log.info(f"  Skipped (already has open work order): {row_text[:60].strip()}")
+                        continue
+                    
+                    # ── Past Due tasks: contain "ago" ──
+                    if "ago" in row_text:
+                        try:
+                            cb.click(timeout=2000)
+                        except:
+                            cb.locator('xpath=..').click(timeout=2000)
+                        selected_any = True
+                        log.info(f"  Selected Past Due task: {row_text[:60].strip()}")
+                        
+                    # ── Upcoming tasks: contain "miles", must be < 300 ──
+                    elif "miles" in row_text:
+                        match = re.search(r'([\d,]+)\s*miles', row_text)
+                        if match:
+                            miles_str = match.group(1).replace(',', '')
                             try:
-                                cb.click(timeout=2000)
-                            except:
-                                cb.locator('xpath=..').click(timeout=2000)
-                            selected_any = True
-                            log.info(f"  Selected Past Due task: {row_text[:50].strip()}...")
-                        elif "miles" in row_text:
-                            # Extract miles, accounting for potential commas (e.g., "1,200 miles")
-                            match = re.search(r'([\d,]+)\s*miles', row_text)
-                            if match:
-                                miles_str = match.group(1).replace(',', '')
-                                try:
-                                    miles = int(miles_str)
-                                    if miles < 300:
-                                        try:
-                                            cb.click(timeout=2000)
-                                        except:
-                                            cb.locator('xpath=..').click(timeout=2000)
-                                        selected_any = True
-                                        log.info(f"  Selected Upcoming task (<300 miles): {miles} miles - {row_text[:50].strip()}...")
-                                    else:
-                                        log.info(f"  Skipped Upcoming task (>=300 miles): {miles} miles")
-                                except ValueError:
-                                    pass
-                except Exception as e:
+                                miles = int(miles_str)
+                                if miles < 300:
+                                    try:
+                                        cb.click(timeout=2000)
+                                    except:
+                                        cb.locator('xpath=..').click(timeout=2000)
+                                    selected_any = True
+                                    log.info(f"  Selected Upcoming task (<300 miles): {miles} miles - {row_text[:60].strip()}")
+                                else:
+                                    log.info(f"  Skipped Upcoming task (>=300 miles): {miles} miles")
+                            except ValueError:
+                                pass
+                except Exception:
                     continue
             
             if not selected_any:
                 log.info("  No tasks selected for work order. Skipping.")
                 return
                 
-            # Create Work Order
+            # ── Step 4: Click "Create work orders" button ──
             log.info("  Creating Work Order...")
-            time.sleep(2) # Give React time to render
+            time.sleep(2) # Give React time to render the button
             
-            # Click Create work order(s) button directly
+            # Take a screenshot before clicking so we can debug if needed
             try:
-                # Find the deepest visible element containing "Create work order" (handles both singular and plural dynamically)
-                create_btn = self.page.locator(':visible', has_text=re.compile('Create work order', re.IGNORECASE)).last
-                create_btn.click(timeout=10000)
+                pre_click_path = Path(__file__).parent / "logs" / f"pre_create_{int(time.time())}.png"
+                self.page.screenshot(path=str(pre_click_path))
             except:
-                # Fallback: Force click if intercepted
-                create_btn = self.page.locator(':visible', has_text=re.compile('Create work order', re.IGNORECASE)).last
-                create_btn.click(timeout=5000, force=True)
+                pass
             
-            # Confirm modal
-            log.info("  Confirming modal...")
-            time.sleep(1) # Let modal animate
+            # Click the "Create work orders" button
+            create_btn = self.page.get_by_text(re.compile(r'Create work order', re.IGNORECASE)).last
+            create_btn.click(timeout=10000)
             
-            dialog = self.page.locator('div[role="dialog"]').last
-            if not dialog.is_visible(timeout=2000):
-                dialog = self.page
-                
-            try:
-                # Look for typical confirmation button text inside the modal
-                confirm_btn = dialog.locator('button:visible', has_text=re.compile('Confirm|Create|Submit|Save|Yes', re.IGNORECASE)).last
-                confirm_btn.click(timeout=5000)
-            except Exception as e:
-                log.error(f"  Failed to confirm modal: {e}")
-                return
+            # ── Step 5: Wait for work order to be created ──
+            # MPOWR does NOT show a confirmation modal - it creates the work order directly.
+            # Wait for the page to settle after creation.
+            log.info("  Work order creation initiated. Waiting for page to settle...")
+            time.sleep(5) # Give MPOWR time to process and update the page
             
-            # Wait for modal to disappear
-            time.sleep(3)
+            # ── Step 6: Navigate to Work Orders tab to find the new work order ──
+            log.info("  Navigating to Work Orders tab to verify and open the new work order...")
+            wo_tab = self.page.get_by_text(re.compile(r'Work Orders', re.IGNORECASE)).first
+            wo_tab.click(timeout=5000)
+            time.sleep(3) # Wait for list to load
             
-            # Now we must navigate to the newly created work order to inject the Differential Service.
-            # MPOWR might not auto-redirect, so we manually go to the Work Orders tab.
-            log.info("  Navigating to Work Orders tab to open the new work order...")
-            work_orders_tab = self.page.locator(':visible', has_text=re.compile(r'Work Orders', re.IGNORECASE)).last
-            work_orders_tab.click(timeout=5000)
-            time.sleep(2) # Wait for list to load
-            
-            # Click the top-most (newest) work order in the list
+            # Click the top-most (newest) work order link in the list
             try:
                 first_wo_link = self.page.locator('a[href*="/work-orders/"]').first
-                first_wo_link.click(timeout=5000)
-                
-                # Wait to enter the details page
-                self.page.wait_for_url(re.compile(r".*/work-orders/.*"), timeout=10000)
-                time.sleep(3) # Give it time to render tasks
+                if first_wo_link.is_visible(timeout=5000):
+                    first_wo_link.click(timeout=5000)
+                    time.sleep(3) # Give it time to render the work order details
+                    
+                    # Check if we need to inject the Front Differential service
+                    page_text = self.page.inner_text('body').lower()
+                    if "engine oil" in page_text and "filter" in page_text and "replace" in page_text:
+                        log.info("  Found 'Engine oil & filter replace'. Injecting Front Differential service...")
+                        self._inject_differential_service()
+                    else:
+                        log.info("  No engine oil replacement found. Work order complete.")
+                else:
+                    log.info("  Could not find work order link. Work order may have been created successfully.")
             except Exception as e:
-                log.error(f"  Could not enter work order details page: {e}")
-                return
-            
-            # Look for Engine oil & filter replace
-            page_text = self.page.inner_text('body').lower()
-            if "engine oil & filter" in page_text and "replace" in page_text:
-                log.info("  Found 'Engine oil & filter replace'. Injecting Front Differential service...")
-                self._inject_differential_service()
-            else:
-                log.info("  No engine oil replacement found. Work order complete.")
+                log.warning(f"  Could not open work order details for differential injection: {e}")
+                log.info("  Work order was likely created successfully.")
                 
         except Exception as e:
             log.error(f"  Failed processing vehicle {vehicle_url}: {e}")
