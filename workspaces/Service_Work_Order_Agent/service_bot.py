@@ -88,6 +88,11 @@ class ServiceBot:
         # Wait for vehicle table to load
         self.page.wait_for_url("**/vehicles**", timeout=15000)
         
+        # Wait for table rows to actually render (data fetched) BEFORE clicking pagination
+        log.info("Waiting for vehicle table data to load...")
+        self.page.wait_for_selector('table tbody tr, .list-group-item', timeout=20000)
+        time.sleep(2) # Give React a moment to settle
+        
         # Change results per page to 100
         log.info("Setting results per page to 100...")
         # Often a dropdown or a button group at the bottom
@@ -100,11 +105,9 @@ class ServiceBot:
             per_page_btn = self.page.locator('button', has_text=re.compile('Results per page')).first
             if per_page_btn.is_visible():
                 per_page_btn.click()
+                time.sleep(1) # Wait for dropdown menu animation
                 self.page.locator('li, div[role="option"]', has_text="100").first.click()
-                time.sleep(3)
-
-        # Wait for table rows
-        self.page.wait_for_selector('table tbody tr, .list-group-item', timeout=10000)
+                time.sleep(3) # Wait for table reload
 
     def _process_fleet(self):
         """Iterates through vehicles and processes those with past due/due soon tags."""
