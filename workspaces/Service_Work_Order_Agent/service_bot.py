@@ -174,11 +174,16 @@ class ServiceBot:
             service_tab.click(timeout=5000)
             time.sleep(3) # Wait for tab content to fully load
             
-            # ── Step 3: Evaluate checkboxes and select eligible tasks ──
+            # ── Step 2: Evaluate checkboxes and select eligible tasks ──
             selected_any = False
+            skipped_open_wo = 0
+            skipped_too_far = 0
+            skipped_other = 0
             log.info("  Evaluating service tasks...")
             
             checkboxes = self.page.locator('input[type="checkbox"]').all()
+            log.info(f"  Found {len(checkboxes)} checkboxes on page")
+            
             for cb in checkboxes:
                 try:
                     if cb.is_checked():
@@ -192,12 +197,14 @@ class ServiceBot:
                     
                     # Skip if this container holds multiple checkboxes (it's the whole section, not a single row)
                     if parent.locator('input[type="checkbox"]').count() > 1:
+                        skipped_other += 1
                         continue
                         
                     row_text = parent.inner_text().lower()
                     
                     # ── SKIP rows that already have an open work order ──
                     if "open work order" in row_text:
+                        skipped_open_wo += 1
                         log.info(f"  Skipped (already has open work order): {row_text[:60].strip()}")
                         continue
                     
@@ -225,11 +232,14 @@ class ServiceBot:
                                     selected_any = True
                                     log.info(f"  Selected Upcoming task (<300 miles): {miles} miles - {row_text[:60].strip()}")
                                 else:
+                                    skipped_too_far += 1
                                     log.info(f"  Skipped Upcoming task (>=300 miles): {miles} miles")
                             except ValueError:
                                 pass
                 except Exception:
                     continue
+            
+            log.info(f"  Summary: {skipped_open_wo} skipped (open WO), {skipped_too_far} skipped (>=300mi), {skipped_other} skipped (other)")
             
             if not selected_any:
                 log.info("  No tasks selected for work order. Skipping.")
