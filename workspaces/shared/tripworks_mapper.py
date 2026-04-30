@@ -1224,14 +1224,25 @@ def map_legacy_to_dashboard(row: dict, mpwr_conf_number: str, webhook_payload: d
     # FIX: TripWorks always sets experience_timeslot end_time to 1 hour after start for rentals.
     # Calculate proper rental return time by adding duration hours to activity_time.
     if is_rental and payload.get("activity_time"):
-        import re
         from datetime import timedelta
-        mpowr_act = payload.get("mpowr_activity", "")
-        match = re.search(r'(\d+)\.0 Hrs', mpowr_act)
         
+        combined_act = (payload.get("mpowr_activity", "") + " " + payload.get("ticket_duration_string", "")).lower()
         hours = 0
-        if match:
-            hours = int(match.group(1))
+        
+        if "multi-day" in combined_act or "multi day" in combined_act:
+            hours = -1
+        elif "24 hour" in combined_act or "24 hr" in combined_act:
+            hours = 24
+        elif "full-day" in combined_act or "full day" in combined_act:
+            hours = 9
+        elif "half-day" in combined_act or "half day" in combined_act:
+            hours = 5
+        elif "4 hour" in combined_act:
+            hours = 4
+        elif "3 hour" in combined_act or "3 hr" in combined_act:
+            hours = 3
+        elif "2 hour" in combined_act or "2 hr" in combined_act:
+            hours = 2
             
         if hours > 0:
             try:
@@ -1240,9 +1251,9 @@ def map_legacy_to_dashboard(row: dict, mpwr_conf_number: str, webhook_payload: d
                 end_time = end_dt.strftime("%I:%M %p").lstrip("0")
             except Exception as e:
                 pass
-        elif "multi" in mpowr_act.lower() or "multi" in payload.get("ticket_duration_string", "").lower():
-            # Multi-day rentals typically return at 5:00 PM on their final day
-            end_time = "5:00 PM"
+        elif hours == -1:
+            # Multi-day rentals return at 6:00 PM on their final day
+            end_time = "6:00 PM"
     
     dashboard_row = {
         "TW Confirmation": str(row.get("TW Confirmation", "")),

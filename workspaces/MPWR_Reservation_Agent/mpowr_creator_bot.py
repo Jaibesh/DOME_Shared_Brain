@@ -951,18 +951,8 @@ class MpowrCreatorBot:
                     date_input = self._page.get_by_role("textbox", name=re.compile(r"date", re.IGNORECASE)).first
                 try:
                     if date_input.is_visible(timeout=5000):
-                        if is_multi_day:
-                            date_input.click()
-                            cal_found = True
-                        else:
-                            # For regular rentals, typing directly is faster and works
-                            formatted = f"{start_dt.month:02d}/{start_dt.day:02d}/{start_dt.year}"
-                            date_input.click()
-                            date_input.fill(formatted)
-                            date_input.press("Enter")
-                            print(f"  ✅ Date typed directly: {formatted}")
-                            time.sleep(2)
-                            return
+                        date_input.click()
+                        cal_found = True
                 except Exception:
                     pass
 
