@@ -847,13 +847,14 @@ def build_payloads_from_webhook(webhook_json: dict) -> list[dict]:
     if not tw_conf:
         return [{"error": "Missing confirmation_code in webhook"}]
     
-    customer = payload.get("customer", {})
+    customer = payload.get("customer") or {}
     first_name = str(customer.get("first_name", "")).strip()
     last_name = str(customer.get("last_name", "")).strip()
-    phone = str(customer.get("phone_format_intl", customer.get("phone", ""))).strip()
+    phone_inner = customer.get("phone") or ""
+    phone = str(customer.get("phone_format_intl", phone_inner)).strip()
     
     if not first_name or not last_name:
-        return [{"error": f"Missing customer name in webhook for {tw_conf}"}]
+        return [{"error": f"Skipped: Missing customer name in webhook for {tw_conf} (likely POS/merchandise)"}]
     
     # Skip test reservations
     if "test" in first_name.lower() or "test" in last_name.lower():
@@ -869,12 +870,14 @@ def build_payloads_from_webhook(webhook_json: dict) -> list[dict]:
     results = []
     
     for order in trip_orders:
+        if not isinstance(order, dict): continue
+        
         # Skip cancelled tripOrders entirely (e.g. partial cancellations)
-        order_status = order.get("status", {})
-        if isinstance(order_status, dict) and order_status.get("slug") == "cancelled":
+        order_status = order.get("status") or {}
+        if order_status.get("slug") == "cancelled":
             continue
 
-        experience = order.get("experience", {})
+        experience = order.get("experience") or {}
         activity = experience.get("name", "")
         
         if not activity:
@@ -901,7 +904,9 @@ def build_payloads_from_webhook(webhook_json: dict) -> list[dict]:
         has_vehicle_ticket = False
         
         for b in bookings:
-            ect_name = str(b.get("experience_customer_type", {}).get("name", "")).strip()
+            if not isinstance(b, dict): continue
+            ect = b.get("experience_customer_type") or {}
+            ect_name = str(ect.get("name", "")).strip()
             if ect_name and ect_name != "Guest Waiver":
                 ticket_parts.append(ect_name)
                 ect_lower = ect_name.lower()
@@ -938,7 +943,7 @@ def build_payloads_from_webhook(webhook_json: dict) -> list[dict]:
         mpowr_vehicle = vehicles_list[0]["model"]
         
         # Date/Time from experience_timeslot (clean ISO format — no serial time issues)
-        timeslot = order.get("experience_timeslot", {})
+        timeslot = order.get("experience_timeslot") or {}
         start_time_str = timeslot.get("start_time", "")
         end_time_str = timeslot.get("end_time", "")
         time_label = timeslot.get("label", "")  # e.g., "3:30 PM" — already formatted
@@ -996,11 +1001,13 @@ def build_payloads_from_webhook(webhook_json: dict) -> list[dict]:
         has_adventure_assure = False
 
         for b in bookings:
-            for addon in b.get("addons", []):
-                addon_name = str(addon.get("name", ""))
+            b_dict = b if isinstance(b, dict) else {}
+            for addon in b_dict.get("addons", []):
+                a_dict = addon if isinstance(addon, dict) else {}
+                addon_name = str(a_dict.get("name", ""))
                 addon_lower = addon_name.lower()
                 # FIX: TripWorks sends price=None for hidden addons — treat as 0
-                addon_price = addon.get("price") or 0
+                addon_price = a_dict.get("price") or 0
 
                 # Adventure Assure (keep — it's a real MPOWR product)
                 if "adventure assure" in addon_lower and "no" not in addon_lower:
@@ -1049,7 +1056,9 @@ def build_payloads_from_webhook(webhook_json: dict) -> list[dict]:
         
         # Override with "How many people?" custom field if present
         for cf in payload.get("custom_field_values", []):
-            cf_name = cf.get("custom_field", {}).get("internal_name", "")
+            cf = cf if isinstance(cf, dict) else {}
+            cf_dict = cf.get("custom_field") or {}
+            cf_name = cf_dict.get("internal_name", "")
             if "How many people" in cf_name:
                 val = cf.get("string_value") or cf.get("text_value") or cf.get("integer_value")
                 if val:
@@ -1083,7 +1092,7 @@ def build_payloads_from_webhook(webhook_json: dict) -> list[dict]:
             "ticket_duration_string": str(tt_info.get("duration", "")),
             "party_size": party_size,
             "waivers_expected": party_size,
-            "waivers_complete": sum(1 for b in bookings if str(b.get("experience_customer_type", {}).get("name", "")).strip() == "Guest Waiver"),
+            "waivers_complete": sum(1 for b in bookings if str((b.get("experience_customer_type") or {}).get("name", "")).strip() == "Guest Waiver"),
             "_webhook_payload": payload,  # Preserve raw payload for Dashboard push
             "has_tripsafe": has_tripsafe,
             "has_adventure_assure": has_adventure_assure,
@@ -1145,7 +1154,7 @@ def map_legacy_to_dashboard(row: dict, mpwr_conf_number: str, webhook_payload: d
 
     # Base payload processing
     order_id = str(webhook_payload.get("id", row.get("TW Order ID", "")))
-    trip_method = webhook_payload.get("trip_method", {}).get("name", "")
+    trip_method = (webhook_payload.get("trip_method") or {}).get("name", "")
     
     sub_total = float(webhook_payload.get("subtotal", 0)) / 100.0 if "subtotal" in webhook_payload else row.get("Sub-Total", 0)
     total = float(webhook_payload.get("total", 0)) / 100.0 if "total" in webhook_payload else row.get("Total", 0)
@@ -1182,7 +1191,8 @@ def map_legacy_to_dashboard(row: dict, mpwr_conf_number: str, webhook_payload: d
     # Safely extract TripWorks Notes
     tw_notes = str(row.get("Notes", ""))
     for field in webhook_payload.get("custom_field_values", []):
-        field_name = str(field.get("custom_field", {}).get("internal_name", "")).lower()
+        f_dict = field if isinstance(field, dict) else {}
+        field_name = str((f_dict.get("custom_field") or {}).get("internal_name", "")).lower()
         if "notes" in field_name:
             extracted = field.get("string_value") or field.get("text_value") or str(field.get("value", ""))
             if extracted and extracted.strip():
@@ -1195,7 +1205,7 @@ def map_legacy_to_dashboard(row: dict, mpwr_conf_number: str, webhook_payload: d
     end_time = ""
     trip_orders = webhook_payload.get("tripOrders", webhook_payload.get("trip_orders", []))
     if trip_orders:
-        ts = trip_orders[0].get("experience_timeslot", {})
+        ts = trip_orders[0].get("experience_timeslot") or {}
         raw_end = ts.get("end_time")
         if raw_end:
             if "T" in str(raw_end):

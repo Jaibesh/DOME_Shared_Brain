@@ -750,8 +750,29 @@ class MpowrUpdaterBot:
                 return False
 
             # Price mismatch — override needed
+            diff = abs(mpowr_price - target_price)
             print(f"  ⚠️ Price mismatch! MPOWR: ${mpowr_price:.2f} vs TripWorks: ${target_price:.2f}")
-            print(f"  Difference: ${abs(mpowr_price - target_price):.2f}")
+            print(f"  Difference: ${diff:.2f}")
+
+            # SAFETY GUARDRAIL: Abort if discrepancy exceeds $200
+            MAX_OVERRIDE_DIFF = 200.00
+            if diff > MAX_OVERRIDE_DIFF:
+                print(f"  🚨 CRITICAL: Price discrepancy ${diff:.2f} exceeds ${MAX_OVERRIDE_DIFF:.2f} safety limit!")
+                print(f"  🚨 ABORTING price override. Manual review required.")
+                self._screenshot(f"CRITICAL_price_abort_{tw_conf}")
+                try:
+                    self.slack.send_message(
+                        "🚨 *CRITICAL PRICE ABORT* 🚨\n"
+                        f"*Customer:* {customer_name}\n"
+                        f"*TW Conf:* {tw_conf}\n"
+                        f"*MPOWR Price:* ${mpowr_price:.2f}\n"
+                        f"*TripWorks Target:* ${target_price:.2f}\n"
+                        f"*Difference:* ${diff:.2f}\n"
+                        "❌ Price NOT overridden. Manual review required."
+                    )
+                except Exception:
+                    pass
+                return False
 
             # Click Actions dropdown (top-right)
             actions_btn = self._page.get_by_role("button", name="Actions", exact=False).first
@@ -928,6 +949,9 @@ class MpowrUpdaterBot:
                 raise ValueError("Calendar button or Start Date input field could not be found.")
 
             if not is_multi_day:
+                if cal_btn.is_disabled():
+                    print("  ⚠️ Calendar button is disabled. Skipping date change.")
+                    return
                 cal_btn.click()
                 time.sleep(1)
 
@@ -1079,6 +1103,15 @@ class MpowrUpdaterBot:
 
                     print(f"  ✅ {label} selected via calendar: {target_month:02d}/{target_day:02d}/{target_year}")
                     time.sleep(1)
+                    
+                    try:
+                        apply_btn = self._page.get_by_role("button", name="Apply")
+                        if apply_btn.is_visible(timeout=1000):
+                            apply_btn.click()
+                            print("  ✅ Clicked 'Apply' to close calendar modal.")
+                            time.sleep(1)
+                    except Exception:
+                        pass
                         
                 else:
                     raise ValueError(f"{label} day '{target_day}' not found in calendar")
@@ -1207,6 +1240,13 @@ class MpowrUpdaterBot:
                     options.nth(i).click()
                     print(f"  ✅ Start Time selected: {text}")
                     time.sleep(1)
+                    try:
+                        apply_btn = self._page.get_by_role("button", name="Apply")
+                        if apply_btn.is_visible(timeout=1000):
+                            apply_btn.click()
+                            time.sleep(1)
+                    except Exception:
+                        pass
                     return
 
             # Try substring/fuzzy match
@@ -1216,6 +1256,13 @@ class MpowrUpdaterBot:
                     options.nth(i).click()
                     print(f"  ✅ Start Time selected (fuzzy): {text}")
                     time.sleep(1)
+                    try:
+                        apply_btn = self._page.get_by_role("button", name="Apply")
+                        if apply_btn.is_visible(timeout=1000):
+                            apply_btn.click()
+                            time.sleep(1)
+                    except Exception:
+                        pass
                     return
 
             # No match — use select_best_time_slot logic and pick closest ≤ target
@@ -1228,6 +1275,13 @@ class MpowrUpdaterBot:
                         options.nth(i).click()
                         print(f"  ⚠️ Used nearest time: {text} (target was {normalized})")
                         time.sleep(1)
+                        try:
+                            apply_btn = self._page.get_by_role("button", name="Apply")
+                            if apply_btn.is_visible(timeout=1000):
+                                apply_btn.click()
+                                time.sleep(1)
+                        except Exception:
+                            pass
                         return
 
             # Ultimate fallback: pick first available
@@ -1236,6 +1290,13 @@ class MpowrUpdaterBot:
                 options.first.click()
                 print(f"  ⚠️ No match for '{normalized}'. Selected first available: {first_text}")
                 time.sleep(1)
+                try:
+                    apply_btn = self._page.get_by_role("button", name="Apply")
+                    if apply_btn.is_visible(timeout=1000):
+                        apply_btn.click()
+                        time.sleep(1)
+                except Exception:
+                    pass
                 return
 
             # Close modal if no option selected
@@ -1247,6 +1308,8 @@ class MpowrUpdaterBot:
         except Exception as e:
             print(f"  ⚠️ Time selection error: {e}")
         finally:
+            self._page.keyboard.press("Escape")
+            time.sleep(1)
             self._screenshot(f"DIAG_AFTER_TIME_SELECTION")
 
     def _handle_vehicle_selection(self, vehicle_name: str, qty: str):
@@ -2384,10 +2447,12 @@ class MpowrUpdaterBot:
             log.info(f"  [Update] Selecting listing: {target_activity}")
             activity_selected = False
             try:
+                # CRIT-FIX: Must filter by state='visible' because MPOWR hides duplicate mobile/skeleton buttons!
+                # Use 5000ms timeout so we don't wait 30s if MPOWR removed the Listing button
                 listing_btn = self._page.locator("button").filter(
-                    has_text=re.compile("Choose Listing|Hell|Poison|Moab|Hour|Half-Day|Full-Day|Multi-Day|Slingshot|Revenge|Spider|Discovery")
-                ).first
-                listing_btn.click()
+                    has_text=re.compile(r"Choose Listing|Hell|Poison|Moab|Hour|Half-Day|Full-Day|Multi-Day|Slingshot|Revenge|Spider|Discovery")
+                ).locator("visible=true").first
+                listing_btn.click(timeout=5000)
                 time.sleep(2)
 
                 self._page.wait_for_selector("[role='radiogroup']", timeout=5000)
@@ -2454,8 +2519,11 @@ class MpowrUpdaterBot:
                 log.error(f"  ❌ Listing selection error during update: {e}")
 
             if not activity_selected:
-                log.error(f"  ❌ Could not select listing '{target_activity}' for reschedule")
-                raise ValueError(f"Cannot select activity for reschedule: {target_activity}")
+                log.warning(f"  ⚠️ Could not select listing '{target_activity}' for reschedule. Assuming it is already correct.")
+
+            # CRIT FIX: Close any lingering Headless UI modals (listing dropdowns, etc)
+            self._page.keyboard.press("Escape")
+            time.sleep(1)
 
             time.sleep(2)
 
@@ -2515,9 +2583,17 @@ class MpowrUpdaterBot:
                         # New UI: Find the minus button and click it until gone
                         minus_btn = card.locator("button").filter(has_text="-").first
                         if minus_btn.is_visible(timeout=100):
-                            while minus_btn.is_visible(timeout=500):
-                                minus_btn.click()
+                            reset_clicks = 0
+                            while minus_btn.is_visible(timeout=500) and reset_clicks < 10:
+                                is_disabled = minus_btn.evaluate("el => el.disabled || el.getAttribute('aria-disabled') === 'true'")
+                                if is_disabled:
+                                    break
+                                try:
+                                    minus_btn.click(timeout=1000, force=True)
+                                except Exception:
+                                    pass
                                 time.sleep(0.5)
+                                reset_clicks += 1
                             reset_count += 1
                             
                     except Exception as card_err:

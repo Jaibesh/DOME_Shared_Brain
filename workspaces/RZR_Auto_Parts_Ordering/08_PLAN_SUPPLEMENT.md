@@ -167,25 +167,7 @@ When generating a parts list, check inventory first:
 - "✅ CV Boot Kit (2206028) — **1 in stock** (Shelf B-3)"
 - "⚠️ CV Axle (1334441) — **0 in stock** — needs ordering"
 
----
 
-## Gap 5: MPOWR Work Order Integration (MENTIONED but no detail)
-
-### Automatic Flow
-```
-AI creates repair session → Mechanic approves parts list
-    │                              │
-    │                              ├──▶ Parts order → Polaris dealer portal
-    │                              │
-    └──────────────────────────────└──▶ MPOWR work order created automatically
-                                        (via existing Service Bot infrastructure)
-                                        - Vehicle linked
-                                        - Service tasks from AI diagnosis
-                                        - Expected hours from service manual
-                                        - Parts list attached
-```
-
----
 
 ## Gap 6: Data Freshness & Maintenance Plan (INCOMPLETE)
 

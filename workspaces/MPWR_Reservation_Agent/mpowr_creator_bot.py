@@ -748,6 +748,28 @@ class MpowrCreatorBot:
             diff = abs(mpowr_price - target_price)
             print(f"  ⚠️ Price mismatch! MPOWR: ${mpowr_price:.2f} vs TripWorks: ${target_price:.2f} (diff: ${diff:.2f})")
 
+            # SAFETY GUARDRAIL: Abort if discrepancy exceeds $200
+            # A $200+ mismatch indicates a data/mapping bug, not normal pricing variance
+            MAX_OVERRIDE_DIFF = 200.00
+            if diff > MAX_OVERRIDE_DIFF:
+                print(f"  🚨 CRITICAL: Price discrepancy ${diff:.2f} exceeds ${MAX_OVERRIDE_DIFF:.2f} safety limit!")
+                print(f"  🚨 ABORTING reservation creation. Manual review required.")
+                ss = self._screenshot(f"CRITICAL_price_abort_{tw_conf}")
+                try:
+                    self.slack.send_message(
+                        f"🚨 *CRITICAL PRICE ABORT* 🚨\n"
+                        f"*Customer:* {customer_name}\n"
+                        f"*TW Conf:* {tw_conf}\n"
+                        f"*MPOWR Price:* ${mpowr_price:.2f}\n"
+                        f"*TripWorks Target:* ${target_price:.2f}\n"
+                        f"*Difference:* ${diff:.2f}\n"
+                        f"*Action:* ❌ Reservation NOT created. Manual review required.\n"
+                        f"*Reason:* Exceeds ${MAX_OVERRIDE_DIFF:.2f} safety threshold"
+                    )
+                except Exception:
+                    pass
+                raise ValueError(f"PRICE SAFETY ABORT: ${diff:.2f} discrepancy for {tw_conf} ({customer_name})")
+
             # Scroll up to the listing selection area where the "Options" button lives
             self._page.evaluate("window.scrollTo(0, 0)")
             time.sleep(1)

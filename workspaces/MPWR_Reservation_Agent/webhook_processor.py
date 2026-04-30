@@ -80,7 +80,8 @@ def process_webhooks():
             # Determine TW Conf
             tw_conf = payload.get("confirmation_code")
             if not tw_conf and "trip" in payload:
-                tw_conf = payload["trip"].get("confirmation_code")
+                trip_dict = payload["trip"] if isinstance(payload["trip"], dict) else {}
+                tw_conf = trip_dict.get("confirmation_code")
             
             if not tw_conf:
                 log.warning(f"  -> Skipping {fname}: No TW Confirmation Code found.")
@@ -102,7 +103,9 @@ def process_webhooks():
             # The dashboard Amount Due field is updated via update_dashboard_row when needed.
             
             if "tripOrders" in payload and len(payload["tripOrders"]) > 0:
-                slug = payload["tripOrders"][0].get("status", {}).get("slug", "")
+                first_order = payload["tripOrders"][0] if isinstance(payload["tripOrders"][0], dict) else {}
+                status_dict = first_order.get("status") or {}
+                slug = status_dict.get("slug", "")
                 if slug == "cancelled":
                     is_cancel = True
             
@@ -147,7 +150,9 @@ def process_webhooks():
                     # ============================================================
                     slug = ""
                     if "tripOrders" in payload and len(payload["tripOrders"]) > 0:
-                        slug = payload["tripOrders"][0].get("status", {}).get("slug", "")
+                        first_order = payload["tripOrders"][0] if isinstance(payload["tripOrders"][0], dict) else {}
+                        status_dict = first_order.get("status") or {}
+                        slug = status_dict.get("slug", "")
                     
                     if slug == "booked":
                         # FIX-1: Final dedup guard — check in-batch tracking one more time
@@ -244,7 +249,7 @@ def process_webhooks():
                                     "TW Confirmation": tw_conf,
                                     "First Name": primary_p["first_name"],
                                     "Last Name": primary_p["last_name"],
-                                    "Email": payload.get("customer", {}).get("email", ""),
+                                    "Email": (payload.get("customer") or {}).get("email", ""),
                                     "Phone": primary_p["phone"],
                                     "Activity": primary_p["activity"] + (" (+More)" if len(valid_payloads) > 1 else ""),
                                     "Activity Date": primary_p["activity_date"],
@@ -381,8 +386,10 @@ def process_webhooks():
                                 # Extract TripWorks booking IDs for status-changed webhook matching
                                 booking_ids = []
                                 for to in payload.get("tripOrders", []):
-                                    for b in to.get("bookings", []):
-                                        bid = b.get("id")
+                                    to_dict = to if isinstance(to, dict) else {}
+                                    for b in to_dict.get("bookings", []):
+                                        b_dict = b if isinstance(b, dict) else {}
+                                        bid = b_dict.get("id")
                                         if bid and isinstance(bid, int):
                                             booking_ids.append(bid)
                                 if booking_ids:
@@ -471,7 +478,9 @@ def process_webhooks():
             _mark_webhook(row_id, "processed")
             
         except Exception as e:
-            log.error(f"Error processing webhook {fname}: {e}")
+            import traceback
+            tb_str = traceback.format_exc()
+            log.error(f"Error processing webhook {fname}: {e}\n{tb_str}")
             slack.send_message(f"⚠️ [WEBHOOK PROCESSING ERROR] Critical parsing error while processing `{fname}`. Reason: {e}")
             
     if bot:

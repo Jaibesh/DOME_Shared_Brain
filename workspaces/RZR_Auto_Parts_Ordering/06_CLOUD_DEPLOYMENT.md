@@ -1,157 +1,70 @@
-# 06 — Cloud Deployment & Infrastructure
+# 06 — Local Development & Processing Infrastructure
 
-## Hosting Architecture
+## Local-First Architecture
+
+To minimize Gemini API costs during development and document processing, the system will rely heavily on local processing. Heavy lifting such as PDF extraction, vector embedding, and LangGraph workflow orchestration will be run entirely on the local development machine.
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                 Google Cloud Platform                 │
-│                                                       │
-│  ┌─────────────────┐    ┌─────────────────────────┐  │
-│  │  Cloud Run       │    │  Cloud Storage           │  │
-│  │  (FastAPI +      │    │  (Service manuals,       │  │
-│  │   React SPA)     │    │   schematics, processed  │  │
-│  │                  │    │   documents)              │  │
-│  │  Auto-scaling    │    └─────────────────────────┘  │
-│  │  0 → N instances │                                 │
-│  └────────┬────────┘                                  │
-│           │                                           │
-│           ▼                                           │
-│  ┌─────────────────┐    ┌───────────────────────┐    │
-│  │  Supabase        │    │  Secret Manager        │   │
-│  │  (Managed)       │    │  (API keys, dealer     │   │
-│  │                  │    │   credentials)          │   │
-│  │  • PostgreSQL    │    └───────────────────────┘    │
-│  │  • pgvector      │                                 │
-│  │  • Auth          │    ┌───────────────────────┐    │
-│  │  • Edge Funcs    │    │  Cloud Scheduler       │   │
-│  └─────────────────┘    │  (Catalog sync jobs)   │   │
-│                          └───────────────────────┘    │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                     LOCAL MACHINE (Development)                 │
+│                                                                  │
+│  ┌──────────────┐    ┌──────────────────┐    ┌───────────────┐  │
+│  │  React SPA   │───▶│  FastAPI Backend  │───▶│  LangGraph    │  │
+│  │  (Frontend)  │◀───│  (API Gateway)    │◀───│  Agent        │  │
+│  └──────────────┘    └────────┬─────────┘    └───────┬───────┘  │
+│                               │                       │          │
+│                    ┌──────────┴──────────┐            │          │
+│                    │                     │            │          │
+│              ┌─────▼─────┐    ┌─────────▼──┐  ┌─────▼───────┐  │
+│              │ Local     │    │ Local DB   │  │ Local Graph │  │
+│              │ PostgreSQL│    │ (pgvector) │  │ DB (Neo4j)  │  │
+│              └────────────┘    └────────────┘  └─────────────┘  │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │              Local Document Processing Pipeline           │   │
+│  │  Docling/PyMuPDF │ Local Embedding Models │ LangGraph     │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Why Google Cloud Run?
+### Why Local First?
 
 | Feature | Benefit |
 |---------|---------|
-| **Container-based** | Docker image with all dependencies, reproducible |
-| **Auto-scaling** | Scales to zero when no one's using it (cost savings) |
-| **HTTPS built-in** | Automatic TLS certificates, custom domain support |
-| **Gemini integration** | Same GCP project, no cross-cloud API calls |
-| **Pay-per-use** | Only charged for actual compute time |
+| **Cost Savings** | Massive reduction in API costs. Parsing thousands of PDF pages locally is free. |
+| **Data Privacy** | No proprietary Polaris manuals or sensitive fleet data uploaded to third-party APIs during the parsing stage. |
+| **Rapid Iteration** | Instant feedback loop when tweaking extraction rules, LangGraph nodes, and database schemas. |
+| **Complete Control** | Local containerized environment (Docker Compose) for PostgreSQL, pgvector, and frontend. |
 
-### Estimated Monthly Cost
+### Local Stack Choices
 
-| Service | Specification | Est. Cost/mo |
-|---------|--------------|-------------|
-| Cloud Run | 1 vCPU, 2GB RAM, ~100 hrs/mo usage | $15-30 |
-| Supabase | Pro plan (8GB DB, pgvector) | $25 |
-| Cloud Storage | ~10GB for documents/schematics | $0.50 |
-| Gemini API | ~50k tokens/day avg (chat + embeddings) | $30-60 |
-| Secret Manager | Minimal usage | $0.06 |
-| Custom Domain | Via Google Domains or Cloudflare | $12/yr |
-| **TOTAL** | | **~$75-120/mo** |
+| Layer | Technology | Rationale |
+|-------|-----------|-----------|
+| **LLM Orchestration** | LangGraph | State-based, cyclic graph workflows ideal for multi-step agent reasoning. |
+| **Embedding Model** | Local Transformers (e.g. `nomic-embed-text` or `all-MiniLM-L6-v2`) | Completely free, fast local vector generation. |
+| **Database** | Dockerized PostgreSQL with pgvector | Identical API to Supabase, but runs completely locally. |
+| **Doc Parsing** | Docling / PyMuPDF | Local extraction of layout, tables, and images without API calls. |
+| **LLM (Dev)** | Ollama (Llama 3 / Mistral) | Run local models for intermediate reasoning steps to save costs, saving Gemini only for complex final outputs if necessary. |
 
 ---
 
-## Security & Access Control
+## Zero-Cost Ingestion Pipeline
 
-### Authentication
-- Supabase Auth with email/password login
-- Only authorized mechanics can access the system
-- Admin role for managing users, viewing all orders
+The most expensive part of a RAG application is processing the initial knowledge base. By doing this locally:
 
-### Access Tiers
-```
-MECHANIC
-├── Select vehicles
-├── Chat with AI
-├── Edit parts lists
-├── Submit orders (with approval)
-└── View own order history
-
-LEAD MECHANIC / MANAGER
-├── Everything above, plus:
-├── Approve orders over threshold
-├── View all mechanics' orders
-├── Access repair analytics
-└── Manage fleet vehicles
-
-ADMIN
-├── Everything above, plus:
-├── Manage user accounts
-├── Configure AI settings
-├── Access document ingestion tools
-└── View system logs
-```
-
-### Data Security
-- All data encrypted at rest (Supabase default)
-- HTTPS for all traffic (Cloud Run default)
-- Polaris dealer credentials stored in GCP Secret Manager
-- Row-Level Security (RLS) on Supabase tables
-- No PII beyond mechanic names
+1. **Extraction:** PyMuPDF extracts text, images, and layout from the `Vehicle_Documentation` folder.
+2. **Vision Analysis:** Use a local vision model (e.g., LLaVA via Ollama) to analyze exploded schematics and extract part numbers without paying for Gemini Vision.
+3. **Chunking & Embedding:** Use `sentence-transformers` locally to embed chunks into the local `pgvector` database.
 
 ---
 
-## CI/CD Pipeline
+## Deployment Strategy (Future)
 
-```
-GitHub Push → GitHub Actions → Build Docker Image → Deploy to Cloud Run
-                    │
-                    ├── Run tests
-                    ├── Build React frontend (Vite)
-                    ├── Build Docker image
-                    ├── Push to Google Artifact Registry
-                    └── Deploy to Cloud Run (rolling update)
-```
+Once the local processing is complete, the vector database is populated, and the application is stable:
 
-### Dockerfile
-```dockerfile
-FROM python:3.12-slim
-
-# Install Node.js for frontend build
-RUN apt-get update && apt-get install -y nodejs npm
-
-# Build frontend
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm ci
-COPY frontend/ ./
-RUN npm run build
-
-# Install Python dependencies
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Install Playwright browsers (for portal agent)
-RUN playwright install chromium --with-deps
-
-# Copy application code
-COPY api/ ./api/
-COPY agent/ ./agent/
-COPY knowledge/ ./knowledge/
-COPY shared/ ./shared/
-
-# Serve React SPA from FastAPI
-# Frontend build output goes to /app/frontend/dist
-# FastAPI serves it as static files
-
-EXPOSE 8080
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8080"]
-```
-
----
-
-## Monitoring & Observability
-
-| Tool | Purpose |
-|------|---------|
-| **Cloud Run Metrics** | CPU, memory, request count, latency |
-| **Structured Logging** | JSON logs to Cloud Logging (reuse `bot_logger.py` pattern) |
-| **Slack Alerts** | Order submissions, failures, low-confidence diagnoses |
-| **Supabase Dashboard** | Database health, query performance |
-| **Uptime Checks** | Cloud Monitoring ping every 5 min |
+1. The local PostgreSQL database dump can be pushed to the production Supabase instance.
+2. The FastAPI backend and React frontend can be containerized and deployed to a low-cost VPS or Google Cloud Run.
+3. The heavy document processing code is never deployed to the cloud, significantly reducing the cloud compute requirements.
 
 ---
 

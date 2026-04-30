@@ -56,13 +56,13 @@ The AI must have a **deep mechanical understanding** of how every Polaris vehicl
 
 Based on Epic 4x4 Adventures fleet composition:
 
-| Vehicle | Engine | HP | Width | Primary Use |
-|---------|--------|----|-------|-------------|
-| **RZR XP 1000** (2-seat & 4-seat) | 999cc DOHC Twin | 114 HP | 64" | Trail recreation |
-| **RZR Pro XP** | 925cc Turbo Twin | 181 HP | 64" | High-performance trail |
-| **RZR Pro S** (formerly Turbo R) | 925cc Turbo Twin | 181 HP | 74" | Wide-open terrain |
-| **Polaris General** | 999cc DOHC Twin | 100 HP | — | Crossover utility/trail |
-| **Polaris Ranger XP 1000** | 999cc Twin | 82 HP | — | Utility/work |
+| Vehicle Model | Configuration | Trim | Color |
+|---------------|---------------|------|-------|
+| **2026 RZR Pro R** | 2-seat | Ultimate | Indy Red |
+| **2026 RZR Pro S** | 2-seat | Ultimate | Warm Grey |
+| **2026 RZR Pro S** | 4-seat | Ultimate | Warm Grey |
+| **2026 RZR XP S** | 2-seat | Ultimate | Stealth Grey |
+| **2026 RZR XP S** | 4-seat | Ultimate | Stealth Grey |
 
 > **Note:** Each model year may have different part numbers. The system must be VIN-aware to handle year-specific and trim-specific variations.
 
@@ -103,14 +103,10 @@ The AI must be especially proficient at diagnosing and generating parts lists fo
 ### Production (Phase 2)
 - [ ] Automated ordering through Polaris dealer portal
 - [ ] Schematics/exploded diagrams displayed inline
-- [ ] Repair history tracking per vehicle
-- [ ] Integration with MPOWR fleet management
 
 ### Advanced (Phase 3)
-- [ ] Predictive maintenance recommendations
-- [ ] Parts inventory tracking and reorder alerts
+- [ ] Parts inventory tracking
 - [ ] Cost estimation and budget tracking
-- [ ] Multi-fleet support
 
 ---
 
