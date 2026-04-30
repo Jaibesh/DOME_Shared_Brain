@@ -1220,6 +1220,29 @@ def map_legacy_to_dashboard(row: dict, mpwr_conf_number: str, webhook_payload: d
                 end_time = str(raw_end)
                 if len(end_time.split(":")) == 3:
                     end_time = ":".join(end_time.split(":")[:2])
+                    
+    # FIX: TripWorks always sets experience_timeslot end_time to 1 hour after start for rentals.
+    # Calculate proper rental return time by adding duration hours to activity_time.
+    if is_rental and payload.get("activity_time"):
+        import re
+        from datetime import timedelta
+        mpowr_act = payload.get("mpowr_activity", "")
+        match = re.search(r'(\d+)\.0 Hrs', mpowr_act)
+        
+        hours = 0
+        if match:
+            hours = int(match.group(1))
+            
+        if hours > 0:
+            try:
+                start_dt = datetime.strptime(payload.get("activity_time").strip(), "%I:%M %p")
+                end_dt = start_dt + timedelta(hours=hours)
+                end_time = end_dt.strftime("%I:%M %p").lstrip("0")
+            except Exception as e:
+                pass
+        elif "multi" in mpowr_act.lower() or "multi" in payload.get("ticket_duration_string", "").lower():
+            # Multi-day rentals typically return at 5:00 PM on their final day
+            end_time = "5:00 PM"
     
     dashboard_row = {
         "TW Confirmation": str(row.get("TW Confirmation", "")),
