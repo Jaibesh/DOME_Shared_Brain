@@ -97,6 +97,13 @@ def check_tour_returns():
 if __name__ == "__main__":
     print(f"[{AGENT_NAME}] Starting Tour Sync Daemon (Runs hourly from 8AM-8PM)...")
     
+    # Kill any orphaned Playwright browser processes from prior crashes
+    try:
+        from shared_utils import reap_playwright_zombies
+        reap_playwright_zombies()
+    except Exception:
+        pass
+    
     # Run immediately on startup to test
     check_tour_returns()
     

@@ -57,6 +57,13 @@ def run_daemon():
 
     # Cleanup old screenshots on startup
     _cleanup_screenshots()
+    
+    # Kill any orphaned Playwright browser processes from prior crashes
+    try:
+        from shared.shared_utils import reap_playwright_zombies
+        reap_playwright_zombies()
+    except Exception:
+        pass
 
     while True:
         try:

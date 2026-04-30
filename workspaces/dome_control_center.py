@@ -20,6 +20,7 @@ import signal
 import time
 from collections import deque
 from datetime import datetime, timedelta
+import hashlib
 
 import customtkinter as ctk
 
@@ -515,7 +516,7 @@ class DOMEControlCenter(ctk.CTk):
                 card.configure(fg_color=BG_CARD, border_color="#30363d")
 
         # Force immediate log refresh (clear cache so new agent's logs render immediately)
-        self._last_log_content = None
+        self._last_log_fingerprint = None
         self._update_log_viewer(force=True)
 
     def _update_log_viewer(self, force=False):
@@ -531,10 +532,12 @@ class DOMEControlCenter(ctk.CTk):
         log_lines = list(agent.log_buffer)
 
         # Skip re-render if nothing has changed (prevents scroll disruption)
-        new_content = "\n".join(log_lines)
-        if not force and hasattr(self, '_last_log_content') and self._last_log_content == new_content:
+        # Use a lightweight fingerprint (length + hash of last line) instead of
+        # joining all 500 lines into a new string every second.
+        content_fingerprint = (len(log_lines), hash(log_lines[-1]) if log_lines else 0)
+        if not force and hasattr(self, '_last_log_fingerprint') and self._last_log_fingerprint == content_fingerprint:
             return
-        self._last_log_content = new_content
+        self._last_log_fingerprint = content_fingerprint
 
         # Check if user has scrolled up (don't auto-scroll if so)
         try:

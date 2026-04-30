@@ -10,8 +10,14 @@ sys.path.append(str(WORKSPACE_DIR))
 
 from shared.mpowr_login import login_to_mpowr
 from shared.bot_logger import get_bot_logger
+from shared.shared_utils import cleanup_old_files, reap_playwright_zombies
 
 log = get_bot_logger("service_bot", str(Path(__file__).parent / "logs"))
+
+# Screenshot/log file cleanup settings
+LOGS_DIR = Path(__file__).parent / "logs"
+SCREENSHOT_MAX_AGE_DAYS = 3
+
 
 class ServiceBot:
     def __init__(self, headless: bool = True):
@@ -23,6 +29,9 @@ class ServiceBot:
 
     def start(self):
         log.info("Starting Playwright browser...")
+        # Kill any zombie Playwright processes from prior crashes
+        reap_playwright_zombies()
+        
         self.playwright = sync_playwright().start()
         self.browser = self.playwright.chromium.launch(headless=self.headless)
         self.context = self.browser.new_context(
@@ -46,6 +55,12 @@ class ServiceBot:
         Executes the daily work order creation workflow.
         """
         log.info("Starting daily Service Work Order workflow...")
+        
+        # Cleanup old debug screenshots on startup
+        removed = cleanup_old_files(str(LOGS_DIR), "*.png", SCREENSHOT_MAX_AGE_DAYS)
+        if removed:
+            log.info(f"  Cleaned up {removed} old screenshot(s) from logs/")
+        
         try:
             # 1. Login
             log.info(f"Logging into MPOWR as {email}...")
@@ -62,7 +77,7 @@ class ServiceBot:
             log.error(f"Workflow failed: {e}")
             # Take screenshot on failure
             try:
-                screenshot_path = Path(__file__).parent / "logs" / f"error_{int(time.time())}.png"
+                screenshot_path = LOGS_DIR / f"error_{int(time.time())}.png"
                 self.page.screenshot(path=str(screenshot_path))
                 log.info(f"Error screenshot saved to {screenshot_path}")
             except:
@@ -160,6 +175,56 @@ class ServiceBot:
             log.info(f"Processing vehicle {idx+1}/{len(vehicle_urls)}: {url}")
             self._process_single_vehicle(url)
 
+    def _is_task_eligible(self, row_text: str) -> tuple[bool, str]:
+        """Determine if a service task row should be selected for a new work order.
+        
+        Handles all status categories from MPOWR:
+          - Past Due: contains "ago" (e.g., "20 hours ago", "3 days ago")
+          - Due Soon: contains "hours" or small mile values (84 miles, 20 hours)
+          - Upcoming: contains "miles" with a distance value
+        
+        Args:
+            row_text: Lowercased inner text of the task row container
+            
+        Returns:
+            Tuple of (eligible: bool, reason: str)
+        """
+        # ── HARD SKIP: rows that already have an open work order ──
+        if "open work order" in row_text:
+            return False, "has open work order"
+        
+        # ── Past Due tasks: contain "ago" (e.g., "20 hours ago", "3 days ago") ──
+        if "ago" in row_text:
+            return True, "past due (contains 'ago')"
+        
+        # ── Due Soon / Upcoming: check miles and hours ──
+        # Due Soon items in MPOWR show "84 miles" / "20 hours" — these are close to due
+        # and should ALWAYS be selected regardless of the 300-mile threshold.
+        
+        # Check hours-based due items (e.g., "20 hours") — always select
+        hours_match = re.search(r'(\d+)\s*hours?', row_text)
+        if hours_match:
+            hours_val = int(hours_match.group(1))
+            # Hours-based reminders mean the vehicle is actively near a service interval
+            if hours_val < 500:  # Sanity cap — anything under 500 hours is actionable
+                return True, f"due soon ({hours_val} hours)"
+        
+        # Check miles-based items
+        miles_match = re.search(r'([\d,]+)\s*miles', row_text)
+        if miles_match:
+            miles_str = miles_match.group(1).replace(',', '')
+            try:
+                miles = int(miles_str)
+                if miles < 300:
+                    return True, f"upcoming (<300 miles: {miles}mi)"
+                else:
+                    return False, f"too far (>= 300 miles: {miles}mi)"
+            except ValueError:
+                return False, "miles parse error"
+        
+        # No recognizable threshold found — skip to be safe
+        return False, "no recognized due indicator"
+
     def _process_single_vehicle(self, vehicle_url: str):
         try:
             self.page.goto(vehicle_url, wait_until='load', timeout=20000)
@@ -178,6 +243,7 @@ class ServiceBot:
             skipped_open_wo = 0
             skipped_too_far = 0
             skipped_other = 0
+            selected_count = 0
             log.info("  Evaluating service tasks...")
             
             checkboxes = self.page.locator('input[type="checkbox"]').all()
@@ -188,69 +254,73 @@ class ServiceBot:
                     if cb.is_checked():
                         continue
                         
-                    # Find the nearest ancestor container that holds the text 'miles' or 'ago'
-                    parent = cb.locator('xpath=ancestor::*[contains(translate(., "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "miles") or contains(translate(., "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "ago")][1]').first
+                    # ── XPath ancestor scoping with fallback ──
+                    # Strategy: Try to find the nearest ancestor containing "miles", "ago", or "hours".
+                    # The [1] picks the FIRST matching ancestor (closest to the checkbox).
+                    parent = cb.locator(
+                        'xpath=ancestor::*['
+                        'contains(translate(., "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "miles") or '
+                        'contains(translate(., "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "ago") or '
+                        'contains(translate(., "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "hours")'
+                        '][1]'
+                    ).first
                     
                     if not parent.is_visible():
                         continue
                     
                     # Skip if this container holds multiple checkboxes (it's the whole section, not a single row)
-                    if parent.locator('input[type="checkbox"]').count() > 1:
+                    cb_count = parent.locator('input[type="checkbox"]').count()
+                    if cb_count > 1:
                         skipped_other += 1
+                        # Log with context so we can debug XPath scoping issues
+                        try:
+                            snippet = parent.inner_text()[:40].strip().replace('\n', ' ')
+                            log.debug(f"  XPath landed on section-level container ({cb_count} checkboxes): {snippet}...")
+                        except:
+                            pass
                         continue
                         
                     row_text = parent.inner_text().lower()
                     
-                    # ── SKIP rows that already have an open work order ──
-                    if "open work order" in row_text:
-                        skipped_open_wo += 1
-                        log.info(f"  Skipped (already has open work order): {row_text[:60].strip()}")
+                    # Use centralized eligibility check
+                    eligible, reason = self._is_task_eligible(row_text)
+                    
+                    if not eligible:
+                        if "open work order" in reason:
+                            skipped_open_wo += 1
+                        elif "too far" in reason or ">= 300" in reason:
+                            skipped_too_far += 1
+                        else:
+                            skipped_other += 1
+                        log.info(f"  Skipped ({reason}): {row_text[:60].strip()}")
                         continue
                     
-                    # ── Past Due tasks: contain "ago" ──
-                    if "ago" in row_text:
-                        try:
-                            cb.click(timeout=2000)
-                        except:
-                            cb.locator('xpath=..').click(timeout=2000)
-                        selected_any = True
-                        log.info(f"  Selected Past Due task: {row_text[:60].strip()}")
+                    # Eligible — click the checkbox
+                    try:
+                        cb.click(timeout=2000)
+                    except:
+                        cb.locator('xpath=..').click(timeout=2000)
+                    selected_any = True
+                    selected_count += 1
+                    log.info(f"  Selected task ({reason}): {row_text[:60].strip()}")
                         
-                    # ── Upcoming tasks: contain "miles", must be < 300 ──
-                    elif "miles" in row_text:
-                        match = re.search(r'([\d,]+)\s*miles', row_text)
-                        if match:
-                            miles_str = match.group(1).replace(',', '')
-                            try:
-                                miles = int(miles_str)
-                                if miles < 300:
-                                    try:
-                                        cb.click(timeout=2000)
-                                    except:
-                                        cb.locator('xpath=..').click(timeout=2000)
-                                    selected_any = True
-                                    log.info(f"  Selected Upcoming task (<300 miles): {miles} miles - {row_text[:60].strip()}")
-                                else:
-                                    skipped_too_far += 1
-                                    log.info(f"  Skipped Upcoming task (>=300 miles): {miles} miles")
-                            except ValueError:
-                                pass
-                except Exception:
+                except Exception as ex:
+                    log.debug(f"  Checkbox evaluation error (non-fatal): {ex}")
                     continue
             
-            log.info(f"  Summary: {skipped_open_wo} skipped (open WO), {skipped_too_far} skipped (>=300mi), {skipped_other} skipped (other)")
+            log.info(f"  Summary: {selected_count} selected, {skipped_open_wo} skipped (open WO), {skipped_too_far} skipped (>=300mi), {skipped_other} skipped (other)")
             
             if not selected_any:
                 log.info("  No tasks selected for work order. Skipping.")
                 return
                 
-            # ── Step 4: Click "Create work orders" button ──
+            # ── Step 3: Click "Create work orders" button ──
             log.info("  Creating Work Order...")
             time.sleep(2) # Give React time to render the button
             
             # Take a screenshot before clicking so we can debug if needed
             try:
-                pre_click_path = Path(__file__).parent / "logs" / f"pre_create_{int(time.time())}.png"
+                pre_click_path = LOGS_DIR / f"pre_create_{int(time.time())}.png"
                 self.page.screenshot(path=str(pre_click_path))
             except:
                 pass
@@ -259,19 +329,19 @@ class ServiceBot:
             create_btn = self.page.get_by_text(re.compile(r'Create work order', re.IGNORECASE)).last
             create_btn.click(timeout=10000)
             
-            # ── Step 5: Wait for work order to be created ──
+            # ── Step 4: Wait for work order to be created ──
             # MPOWR does NOT show a confirmation modal - it creates the work order directly.
             log.info("  Work order creation initiated. Waiting for page to settle...")
             time.sleep(5) # Give MPOWR time to process
             
             # Take a post-creation screenshot for verification
             try:
-                post_click_path = Path(__file__).parent / "logs" / f"post_create_{int(time.time())}.png"
+                post_click_path = LOGS_DIR / f"post_create_{int(time.time())}.png"
                 self.page.screenshot(path=str(post_click_path))
             except:
                 pass
             
-            # ── Step 6: Navigate directly to the vehicle's Work Orders page ──
+            # ── Step 5: Navigate directly to the vehicle's Work Orders page ──
             log.info("  Navigating to vehicle's Work Orders page to verify creation...")
             # Build the work orders URL from the vehicle URL
             # e.g., .../vehicles/A-EJA-NGR/details -> .../vehicles/A-EJA-NGR/work-orders
@@ -281,7 +351,7 @@ class ServiceBot:
             
             # Take a screenshot so we can see what the Work Orders page looks like
             try:
-                wo_page_path = Path(__file__).parent / "logs" / f"wo_page_{int(time.time())}.png"
+                wo_page_path = LOGS_DIR / f"wo_page_{int(time.time())}.png"
                 self.page.screenshot(path=str(wo_page_path))
                 log.info(f"  Work Orders page screenshot: {wo_page_path}")
             except:
@@ -310,67 +380,116 @@ class ServiceBot:
         except Exception as e:
             log.error(f"  Failed processing vehicle {vehicle_url}: {e}")
             try:
-                screenshot_path = Path(__file__).parent / "logs" / f"error_vehicle_{int(time.time())}.png"
+                screenshot_path = LOGS_DIR / f"error_vehicle_{int(time.time())}.png"
                 self.page.screenshot(path=str(screenshot_path))
                 log.info(f"  Error screenshot saved to {screenshot_path}")
             except:
                 pass
 
     def _inject_differential_service(self):
-        """Updates the work order to add the Front Differential Case Fluid service."""
+        """Updates the work order to add the Front Differential Case Fluid service.
         
-        # Click Actions -> Update
-        actions_btn = self.page.locator('button:visible', has_text=re.compile('Actions', re.IGNORECASE)).first
-        actions_btn.click()
-        
-        update_btn = self.page.locator('button, a, li', has_text=re.compile('^Update$', re.IGNORECASE)).first
-        update_btn.click()
-        
-        # Wait for sidebar
-        sidebar = self.page.locator('text="Update Work Order"').locator('xpath=ancestor::div[contains(@class, "sidebar") or contains(@class, "modal") or @role="dialog"]').first
-        sidebar.wait_for(state="visible", timeout=10000)
-        
-        # Click Add Service Task
-        add_btn = sidebar.locator('button', has_text=re.compile('Add Service Task', re.IGNORECASE)).first
-        add_btn.click()
-        
-        time.sleep(1) # Wait for new row to appear
-        
-        # The new row is typically the last set of dropdowns.
-        # Find all Service Area dropdowns in the sidebar
-        service_area_dropdowns = sidebar.locator('label:has-text("Service Area") ~ div').locator('input, select, div[role="combobox"]').all()
-        if not service_area_dropdowns:
-            # Fallback: find by placeholder or just select elements
-            service_area_dropdowns = sidebar.locator('input[placeholder*="Service Area"], div[class*="ServiceArea"]').all()
+        Wrapped in comprehensive error handling with screenshot capture,
+        since the sidebar locator strategy depends on MPOWR's current component structure.
+        """
+        try:
+            # Click Actions -> Update
+            actions_btn = self.page.locator('button:visible', has_text=re.compile('Actions', re.IGNORECASE)).first
+            actions_btn.click()
+            time.sleep(0.5)
             
-        # MPOWR usually uses a searchable dropdown component (like react-select).
-        # Clicking it opens a menu.
-        last_area_input = service_area_dropdowns[-1]
-        last_area_input.click()
-        
-        # Type the exact string or click it
-        exact_area_string = "Front Differential Gear Case Fluid"
-        self.page.keyboard.type(exact_area_string, delay=50)
-        time.sleep(1)
-        self.page.keyboard.press("Enter")
-        
-        # Now find Service Task dropdown
-        service_task_dropdowns = sidebar.locator('label:has-text("Service Task") ~ div').locator('input, select, div[role="combobox"]').all()
-        last_task_input = service_task_dropdowns[-1]
-        last_task_input.click()
-        
-        self.page.keyboard.type("Replace", delay=50)
-        time.sleep(1)
-        self.page.keyboard.press("Enter")
-        
-        # Fill Expected Work Hours
-        hours_input = sidebar.locator('label:has-text("Expected Work Hours") ~ input, input[name="expectedWorkHours"]').first
-        hours_input.fill("1")
-        
-        # Click Update at the bottom
-        bottom_update_btn = sidebar.locator('button', has_text=re.compile('^Update$', re.IGNORECASE)).last
-        bottom_update_btn.click()
-        
-        # Wait for sidebar to close
-        sidebar.wait_for(state="hidden", timeout=10000)
-        log.info("  Successfully injected differential service.")
+            update_btn = self.page.locator('button, a, li', has_text=re.compile('^Update$', re.IGNORECASE)).first
+            update_btn.click()
+            time.sleep(1)
+            
+            # Wait for sidebar — try multiple locator strategies for resilience
+            sidebar = None
+            sidebar_strategies = [
+                # Strategy 1: Find "Update Work Order" text and walk up to sidebar container
+                lambda: self.page.locator('text="Update Work Order"').locator(
+                    'xpath=ancestor::div[contains(@class, "sidebar") or contains(@class, "modal") or @role="dialog"]'
+                ).first,
+                # Strategy 2: Generic dialog/drawer selectors
+                lambda: self.page.locator('div[role="dialog"], [class*="drawer"], [class*="sidebar"], [class*="SlideOver"]').last,
+                # Strategy 3: Any visible panel containing "Update Work Order"
+                lambda: self.page.locator('div').filter(
+                    has=self.page.get_by_text("Update Work Order")
+                ).filter(
+                    has=self.page.locator('button', has_text=re.compile('^Update$', re.IGNORECASE))
+                ).last,
+            ]
+            
+            for i, strategy in enumerate(sidebar_strategies):
+                try:
+                    candidate = strategy()
+                    candidate.wait_for(state="visible", timeout=5000)
+                    sidebar = candidate
+                    log.info(f"  Sidebar found via strategy {i + 1}")
+                    break
+                except:
+                    continue
+            
+            if not sidebar:
+                log.warning("  ⚠️ Could not locate Update Work Order sidebar. Taking diagnostic screenshot.")
+                try:
+                    diag_path = LOGS_DIR / f"sidebar_fail_{int(time.time())}.png"
+                    self.page.screenshot(path=str(diag_path))
+                    log.info(f"  Diagnostic screenshot: {diag_path}")
+                except:
+                    pass
+                return
+            
+            # Click Add Service Task
+            add_btn = sidebar.locator('button', has_text=re.compile('Add Service Task', re.IGNORECASE)).first
+            add_btn.click()
+            
+            time.sleep(1) # Wait for new row to appear
+            
+            # The new row is typically the last set of dropdowns.
+            # Find all Service Area dropdowns in the sidebar
+            service_area_dropdowns = sidebar.locator('label:has-text("Service Area") ~ div').locator('input, select, div[role="combobox"]').all()
+            if not service_area_dropdowns:
+                # Fallback: find by placeholder or just select elements
+                service_area_dropdowns = sidebar.locator('input[placeholder*="Service Area"], div[class*="ServiceArea"]').all()
+                
+            # MPOWR usually uses a searchable dropdown component (like react-select).
+            # Clicking it opens a menu.
+            last_area_input = service_area_dropdowns[-1]
+            last_area_input.click()
+            
+            # Type the exact string or click it
+            exact_area_string = "Front Differential Gear Case Fluid"
+            self.page.keyboard.type(exact_area_string, delay=50)
+            time.sleep(1)
+            self.page.keyboard.press("Enter")
+            
+            # Now find Service Task dropdown
+            service_task_dropdowns = sidebar.locator('label:has-text("Service Task") ~ div').locator('input, select, div[role="combobox"]').all()
+            last_task_input = service_task_dropdowns[-1]
+            last_task_input.click()
+            
+            self.page.keyboard.type("Replace", delay=50)
+            time.sleep(1)
+            self.page.keyboard.press("Enter")
+            
+            # Fill Expected Work Hours
+            hours_input = sidebar.locator('label:has-text("Expected Work Hours") ~ input, input[name="expectedWorkHours"]').first
+            hours_input.fill("1")
+            
+            # Click Update at the bottom
+            bottom_update_btn = sidebar.locator('button', has_text=re.compile('^Update$', re.IGNORECASE)).last
+            bottom_update_btn.click()
+            
+            # Wait for sidebar to close
+            sidebar.wait_for(state="hidden", timeout=10000)
+            log.info("  ✅ Successfully injected differential service.")
+            
+        except Exception as e:
+            log.error(f"  ❌ Differential service injection failed: {e}")
+            # Capture diagnostic screenshot so we can see what state the UI is in
+            try:
+                diag_path = LOGS_DIR / f"inject_fail_{int(time.time())}.png"
+                self.page.screenshot(path=str(diag_path))
+                log.info(f"  Diagnostic screenshot saved: {diag_path}")
+            except:
+                pass

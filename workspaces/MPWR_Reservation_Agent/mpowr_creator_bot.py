@@ -1425,19 +1425,35 @@ class MpowrCreatorBot:
                 if plus_btn.is_visible():
                     print(f"  ✅ Guide add-on already in cart: {label}")
                     if quantity > 1:
-                        # Click + button for each additional unit needed
-                        for click_num in range(quantity - 1):
-                            # RE-FIND the guide card and + button each iteration
-                            # React re-renders the cart after each qty change, making old references stale
-                            guide_card = self._page.locator("div").filter(
-                                has=self._page.get_by_text(label, exact=False)
-                            ).filter(
-                                has=self._page.locator("button").filter(has_text="+")
-                            ).last
-                            plus_btn = guide_card.locator("button").filter(has_text="+").first
-                            plus_btn.click()
-                            time.sleep(2.0)  # Wait for React to process the cart update
-                            print(f"  ✅ Guide quantity incremented ({click_num + 2}/{quantity})")
+                        # ── Fast path: try to find a quantity input field and fill directly ──
+                        # Some MPOWR cart items have an editable <input> showing the current qty.
+                        # This is instant vs 2s per click for the + button approach.
+                        qty_set = False
+                        try:
+                            qty_input = guide_card.locator("input[type='number'], input[type='text']").first
+                            if qty_input.is_visible(timeout=1000):
+                                qty_input.fill(str(quantity))
+                                qty_input.press("Tab")  # Trigger React onChange
+                                time.sleep(1.5)
+                                print(f"  ✅ Guide quantity set to {quantity} via input field (fast path)")
+                                qty_set = True
+                        except:
+                            pass
+                        
+                        # ── Slow path: click + button for each additional unit ──
+                        if not qty_set:
+                            for click_num in range(quantity - 1):
+                                # RE-FIND the guide card and + button each iteration
+                                # React re-renders the cart after each qty change, making old references stale
+                                guide_card = self._page.locator("div").filter(
+                                    has=self._page.get_by_text(label, exact=False)
+                                ).filter(
+                                    has=self._page.locator("button").filter(has_text="+")
+                                ).last
+                                plus_btn = guide_card.locator("button").filter(has_text="+").first
+                                plus_btn.click()
+                                time.sleep(2.0)  # Wait for React to process the cart update
+                                print(f"  ✅ Guide quantity incremented ({click_num + 2}/{quantity})")
                         
                         # Verify the final quantity by reading the displayed number
                         try:
