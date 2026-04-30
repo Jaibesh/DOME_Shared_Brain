@@ -1956,12 +1956,13 @@ class MpowrCreatorBot:
         1. Navigate to MPOWR Reservations List
         2. Use the search/filter to look for the webhook email
         3. If a matching reservation row is found, extract its MPOWR ID
+        4. VERIFY the duplicate by navigating to the details page and checking for the email
 
         Args:
             webhook_email: The polaris+{tw_conf}@epic4x4adventures.com email
 
         Returns:
-            MPOWR confirmation ID string if duplicate found, None otherwise
+            MPOWR confirmation ID string if duplicate found AND verified, None otherwise
         """
         if not webhook_email:
             return None
@@ -1981,10 +1982,13 @@ class MpowrCreatorBot:
                 "input[type='search']"
             ).first
 
+            found_id = None
             if search_input.count() > 0 and search_input.is_visible():
-                # Use the search box to filter by webhook email
-                search_input.fill(webhook_email)
-                time.sleep(2)
+                # Use press_sequentially to ensure React onChange handlers fire, then Enter
+                search_input.clear()
+                search_input.press_sequentially(webhook_email, delay=10)
+                search_input.press("Enter")
+                time.sleep(3) # Wait for search results to load
 
                 # Check if any results appear — look for order links excluding the 'create' button
                 order_links = self._page.locator("a[href*='/orders/']:not([href*='create'])")
@@ -1994,19 +1998,10 @@ class MpowrCreatorBot:
                         match = re.search(r'/orders/([A-Za-z0-9-]+)', href)
                         if match:
                             found_id = match.group(1)
-                            log.info(f"  [Duplicate Check] Found existing #{found_id}")
-                            search_input.clear()
-                            time.sleep(0.5)
-                            return found_id
-
-                # Clear search
-                search_input.clear()
-                time.sleep(0.5)
             else:
-                # Fallback: scan page HTML directly for the webhook email
+                # Fallback: scan page HTML directly
                 page_html = self._page.content().lower()
                 if webhook_email.lower() in page_html:
-                    log.warning("  [Duplicate Check] Email found in page HTML (no search box)")
                     links = self._page.eval_on_selector_all(
                         "a[href*='/orders/']",
                         "els => els.map(e => ({href: e.href, text: e.textContent}))"
@@ -2014,7 +2009,25 @@ class MpowrCreatorBot:
                     for link in links:
                         link_match = re.search(r'/orders/(\d+)', link.get("href", ""))
                         if link_match:
-                            return link_match.group(1)
+                            found_id = link_match.group(1)
+                            break
+            
+            # CRITICAL: Verify the found ID actually belongs to this webhook email!
+            # If the search failed to trigger, found_id might just be the top default reservation.
+            if found_id:
+                log.debug(f"  [Duplicate Check] Possible duplicate #{found_id} found. Verifying...")
+                self._page.goto(f"https://mpwr-hq.poladv.com/orders/{found_id}", 
+                               timeout=TIMEOUTS["create_page_load"], 
+                               wait_until="domcontentloaded")
+                time.sleep(2)
+                
+                details_html = self._page.content().lower()
+                if webhook_email.lower() in details_html:
+                    log.info(f"  [Duplicate Check] Verified existing #{found_id}")
+                    return found_id
+                else:
+                    log.warning(f"  [Duplicate Check] False positive for #{found_id}. Email not found on details page. Search likely failed.")
+                    return None
 
             return None
 
