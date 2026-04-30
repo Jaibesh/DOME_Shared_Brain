@@ -862,10 +862,18 @@ def build_payloads_from_webhook(webhook_json: dict) -> list[dict]:
     trip_orders = payload.get("tripOrders", [])
     if not trip_orders:
         return [{"error": "No tripOrders in webhook"}]
-        
+    
+    # Extract TripWorks customer portal URL (for Epic waiver completion QR codes)
+    tw_customer_portal_url = payload.get("customer_portal_url", "")
+    
     results = []
     
     for order in trip_orders:
+        # Skip cancelled tripOrders entirely (e.g. partial cancellations)
+        order_status = order.get("status", {})
+        if isinstance(order_status, dict) and order_status.get("slug") == "cancelled":
+            continue
+
         experience = order.get("experience", {})
         activity = experience.get("name", "")
         
@@ -970,35 +978,60 @@ def build_payloads_from_webhook(webhook_json: dict) -> list[dict]:
                 activity_date = ""
             activity_time = time_label or ""
             
-        # Price (webhook gives cents — clean conversion, no ambiguity)
-        subtotal_cents = payload.get("subtotal", 0)
-        
-        # Insurance & TripSafe deduction
-        has_adventure_assure = False
+        # ====================================================================
+        # PRICE CALCULATION (per-tripOrder, NOT order-level)
+        # ====================================================================
+        # Use per-tripOrder experience_total as the base vehicle rental price.
+        # Do NOT use payload.subtotal — that's the grand total for ALL trips + merchandise.
+        experience_total_cents = order.get("experience_total", 0)
+
+        # Calculate qualifying addon costs from individual addon entries.
+        # ONLY Adventure Assure is kept in the MPOWR price (it's a real MPOWR product).
+        # TripSafe is deducted (TripWorks-only insurance).
+        # Everything else (dust masks, t-shirts, stickers, merch) is EXCLUDED.
+        # Do NOT use order.addons_total — it includes hidden TripSafe + merchandise.
+        qualifying_addon_cents = 0
         tripsafe_deduction_cents = 0
         has_tripsafe = False
+        has_adventure_assure = False
+
         for b in bookings:
             for addon in b.get("addons", []):
                 addon_name = str(addon.get("name", ""))
-                # Must contain "Adventure Assure" but NOT start with "No" (decline option)
-                if "Adventure Assure" in addon_name and "No" not in addon_name:
-                    if addon.get("price", 0) > 0:
+                addon_lower = addon_name.lower()
+                # FIX: TripWorks sends price=None for hidden addons — treat as 0
+                addon_price = addon.get("price") or 0
+
+                # Adventure Assure (keep — it's a real MPOWR product)
+                if "adventure assure" in addon_lower and "no" not in addon_lower:
+                    if addon_price > 0:
                         has_adventure_assure = True
-                        
-                # Deduct TripSafe (TripWorks insurance) from the MPOWR target price
-                if "tripsafe" in addon_name.lower() or "trip safe" in addon_name.lower() or "protection" in addon_name.lower():
-                    if "adventure" not in addon_name.lower() and "no" not in addon_name.lower(): # don't deduct our own assure
+                        qualifying_addon_cents += addon_price
+
+                # TripSafe (deduct — TripWorks-only insurance, not in MPOWR)
+                elif ("tripsafe" in addon_lower or "trip safe" in addon_lower):
+                    if "no" not in addon_lower and "don't" not in addon_lower:
                         has_tripsafe = True
-                        if addon.get("price", 0) > 0:
-                            tripsafe_deduction_cents += addon.get("price", 0)
-        
+                        if addon_price > 0:
+                            tripsafe_deduction_cents += addon_price
+                # All other addons (merch, dust masks, t-shirts, stickers) = EXCLUDED
+
+        # Per-order subtotal = base vehicle price + qualifying addons only
+        order_subtotal_cents = experience_total_cents + qualifying_addon_cents
+
+        # Fallback: if experience_total is absent (walkup/lite webhook format),
+        # we CANNOT reliably separate merchandise from the rental price.
+        # Set target_price to 0 so no price override happens — MPOWR's default
+        # vehicle price is correct and should not be inflated with merch costs.
+        if order_subtotal_cents == 0:
+            order_subtotal_cents = 0  # Will produce target_price = 0 → no override
+
+        # TripSafe hidden-price fallback (9% of base when price=None/$0)
         if has_tripsafe and tripsafe_deduction_cents == 0:
-            # TripWorks hides the TripSafe price as $0. It is calculated as 9% of the base subtotal.
-            # subtotal_cents = base_cents * 1.09
-            base_cents = round(subtotal_cents / 1.09)
-            tripsafe_deduction_cents = subtotal_cents - base_cents
-            
-        target_price = (subtotal_cents - tripsafe_deduction_cents) / 100.0
+            base_cents = round(order_subtotal_cents / 1.09)
+            tripsafe_deduction_cents = order_subtotal_cents - base_cents
+
+        target_price = (order_subtotal_cents - tripsafe_deduction_cents) / 100.0
         
         insurance_choice = "paid" if has_adventure_assure else "free"
         insurance = InsuranceSelector.get_insurance_selection(booking_type, insurance_choice)
@@ -1053,6 +1086,8 @@ def build_payloads_from_webhook(webhook_json: dict) -> list[dict]:
             "waivers_complete": sum(1 for b in bookings if str(b.get("experience_customer_type", {}).get("name", "")).strip() == "Guest Waiver"),
             "_webhook_payload": payload,  # Preserve raw payload for Dashboard push
             "has_tripsafe": has_tripsafe,
+            "has_adventure_assure": has_adventure_assure,
+            "tw_customer_portal_url": order.get("customer_portal_url", tw_customer_portal_url),
             "error": None,
         })
         
@@ -1238,6 +1273,7 @@ def map_legacy_to_dashboard(row: dict, mpwr_conf_number: str, webhook_payload: d
         
         "TW Booking Link": f"https://epic4x4.tripworks.com/trip/{row.get('TW Confirmation', '')}/bookings",
         "Customer Portal Link": f"https://www.epicreservation.com/portal/{row.get('TW Confirmation', '')}",
+        "TW Customer Portal URL": webhook_payload.get("customer_portal_url", ""),
         "Trip Method": trip_method,
         "Notes": tw_notes,
         
@@ -1302,6 +1338,7 @@ def extract_update_data(payload: dict) -> dict:
         "total": p["target_price"],
         "epic_expected": p["waivers_expected"],
         "polaris_expected": p["waivers_expected"],
+        "tw_customer_portal_url": p.get("tw_customer_portal_url", ""),
     }
     
     # Safe Merge: Strip out empty strings or None so we don't overwrite valid legacy Zapier data

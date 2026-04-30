@@ -234,7 +234,48 @@ class SlackNotifier:
     # ═══════════════════════════════════════════════════════════════════════
 
     def send_update_success(self, customer_name: str, tw_confirmation: str,
-                             mpowr_id: str, changes: str = "", screenshot_path: str | None = None):
+                             mpowr_id: str, changes: str = "",
+                             changes_list: list[dict] | None = None,
+                             screenshot_path: str | None = None):
+        """
+        Send detailed update notification with field-level change breakdown.
+        
+        Args:
+            changes_list: List of dicts with keys: field, old, new
+                          e.g. [{"field": "Activity Date", "old": "07/15/2026", "new": "07/18/2026"}]
+        """
+        # Build the changes text from changes_list if provided
+        if changes_list and not changes:
+            # Map fields to emoji categories
+            field_icons = {
+                "activity_date": "📅", "activity_time": "🕐", "end_time": "🕐",
+                "vehicle_model": "🚗", "vehicle_qty": "🚗",
+                "activity_name": "🏔️", "mpowr_activity": "🏔️",
+                "sub_total": "💰", "total": "💰", "amount_due": "💰",
+                "party_size": "👥", "guest_name": "👤", "phone": "📱",
+                "epic_expected": "📋", "polaris_expected": "📋",
+            }
+            # Pretty field names
+            field_labels = {
+                "activity_date": "Activity Date", "activity_time": "Activity Time",
+                "end_time": "End Time", "vehicle_model": "Vehicle",
+                "vehicle_qty": "Vehicle Qty", "activity_name": "Activity",
+                "sub_total": "Subtotal", "total": "Total",
+                "amount_due": "Amount Due", "party_size": "Party Size",
+                "guest_name": "Guest Name", "phone": "Phone",
+                "epic_expected": "Epic Waivers Expected",
+                "polaris_expected": "Polaris Waivers Expected",
+            }
+            lines = []
+            for c in changes_list:
+                f = c.get("field", "")
+                icon = field_icons.get(f, "•")
+                label = field_labels.get(f, f.replace("_", " ").title())
+                old_val = c.get("old", "—")
+                new_val = c.get("new", "—")
+                lines.append(f"{icon} *{label}:* {old_val} → {new_val}")
+            changes = "\n".join(lines) if lines else ""
+
         blocks = [
             {"type": "header", "text": {"type": "plain_text", "text": "🔄 Reservation Updated in MPOWR", "emoji": True}},
             {"type": "section", "fields": [
@@ -244,25 +285,68 @@ class SlackNotifier:
             ]},
         ]
         if changes:
-            blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": f"*Changes:*\n{changes}"}})
+            blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": f"*Changes Applied:*\n{changes}"}})
         blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": f"<https://mpwr-hq.poladv.com/orders/{mpowr_id}|View in MPOWR>"}})
         blocks.append(self._agent_context())
         blocks.append({"type": "divider"})
         fallback = f"🔄 Updated: {customer_name} ({tw_confirmation}) → MPOWR #{mpowr_id}"
+        if changes:
+            fallback += f" | {changes[:200]}"
         self._send_message(blocks, fallback, screenshot_path)
 
-    def send_cancel_success(self, customer_name: str, tw_confirmation: str, mpowr_id: str):
+    def send_update_failure(self, customer_name: str, tw_confirmation: str,
+                             mpowr_id: str, error_reason: str = "",
+                             attempted_changes: list[dict] | None = None):
+        """Send detailed update failure notification."""
+        change_text = ""
+        if attempted_changes:
+            lines = [f"• {c.get('field', '?')}: {c.get('old', '—')} → {c.get('new', '—')}"
+                     for c in attempted_changes]
+            change_text = "\n".join(lines)
+
         blocks = [
-            {"type": "header", "text": {"type": "plain_text", "text": "🗑️ Reservation Cancelled in MPOWR", "emoji": True}},
+            {"type": "header", "text": {"type": "plain_text", "text": "❌ MPOWR Update Failed", "emoji": True}},
             {"type": "section", "fields": [
                 {"type": "mrkdwn", "text": f"*Customer:*\n{customer_name}"},
                 {"type": "mrkdwn", "text": f"*TW Conf:*\n{tw_confirmation}"},
                 {"type": "mrkdwn", "text": f"*MPOWR ID:*\n#{mpowr_id}"},
             ]},
+        ]
+        if error_reason:
+            blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": f"*Error:*\n{error_reason}"}})
+        if change_text:
+            blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": f"*Attempted Changes:*\n{change_text}"}})
+        blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": f"<https://mpwr-hq.poladv.com/orders/{mpowr_id}|Fix Manually in MPOWR>"}})
+        blocks.append(self._agent_context())
+        blocks.append({"type": "divider"})
+        fallback = f"❌ Update Failed: {customer_name} ({tw_confirmation}) MPOWR #{mpowr_id} — {error_reason}"
+        self._send_message(blocks, fallback)
+
+    def send_cancel_success(self, customer_name: str, tw_confirmation: str,
+                             mpowr_id: str, activity_date: str = "",
+                             activity_time: str = "", vehicle_info: str = ""):
+        """Send detailed cancellation notification with reservation details."""
+        fields = [
+            {"type": "mrkdwn", "text": f"*Customer:*\n{customer_name}"},
+            {"type": "mrkdwn", "text": f"*TW Conf:*\n{tw_confirmation}"},
+            {"type": "mrkdwn", "text": f"*MPOWR ID:*\n#{mpowr_id}"},
+        ]
+        if activity_date:
+            fields.append({"type": "mrkdwn", "text": f"*Date:*\n{activity_date}"})
+        if activity_time:
+            fields.append({"type": "mrkdwn", "text": f"*Time:*\n{activity_time}"})
+        if vehicle_info:
+            fields.append({"type": "mrkdwn", "text": f"*Vehicle:*\n{vehicle_info}"})
+
+        blocks = [
+            {"type": "header", "text": {"type": "plain_text", "text": "🗑️ Reservation Cancelled in MPOWR", "emoji": True}},
+            {"type": "section", "fields": fields},
+            {"type": "section", "text": {"type": "mrkdwn", "text": "*Reason:* TripWorks booking cancelled by customer or staff."}},
             self._agent_context(),
             {"type": "divider"},
         ]
-        fallback = f"🗑️ Cancelled: {customer_name} ({tw_confirmation}) — MPOWR #{mpowr_id}"
+        detail = f" | {activity_date} {activity_time}" if activity_date else ""
+        fallback = f"🗑️ Cancelled: {customer_name} ({tw_confirmation}) — MPOWR #{mpowr_id}{detail}"
         self._send_message(blocks, fallback)
 
     # ═══════════════════════════════════════════════════════════════════════

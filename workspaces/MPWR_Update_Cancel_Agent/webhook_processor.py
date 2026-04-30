@@ -147,9 +147,11 @@ def _process_cancel(supabase, row):
 
     log.info(f"[Cancel] Processing cancellation for {tw_conf}")
 
-    # Lookup MPWR ID from Supabase reservations table
+    # Lookup MPWR ID and reservation details from Supabase
     try:
-        res = supabase.table("reservations").select("mpwr_number, activity_date").eq("tw_confirmation", tw_conf.upper()).execute()
+        res = supabase.table("reservations").select(
+            "mpwr_number, activity_date, activity_time, guest_name, vehicle_model, vehicle_qty, activity_name"
+        ).eq("tw_confirmation", tw_conf.upper()).execute()
         if not res.data:
             retry_count = row.get("retry_count", 0)
             if _is_retry_expired(row) or retry_count >= 5:
@@ -161,7 +163,10 @@ def _process_cancel(supabase, row):
             return
         existing_row = res.data[0]
         mpwr_number = existing_row.get("mpwr_number")
-        activity_date_str = existing_row.get("activity_date")
+        activity_date_str = existing_row.get("activity_date", "")
+        customer_name = existing_row.get("guest_name", "Unknown")
+        activity_time = existing_row.get("activity_time", "")
+        vehicle_info = f"{existing_row.get('vehicle_qty', 1)}x {existing_row.get('vehicle_model', '?')}"
     except Exception as e:
         log.error(f"  [Cancel] Failed to query reservations for {tw_conf}: {e}")
         return
@@ -194,7 +199,14 @@ def _process_cancel(supabase, row):
 
     if success:
         log.info(f"  ✅ [Cancel] Successfully canceled {mpwr_number} in MPOWR.")
-        slack.send_message(f"⏭️ [INTENTIONAL OPERATION] Cancelled MPOWR booking {mpwr_number} to match TripWorks refund for {tw_conf}.")
+        slack.send_cancel_success(
+            customer_name=customer_name,
+            tw_confirmation=tw_conf,
+            mpowr_id=mpwr_number,
+            activity_date=activity_date_str,
+            activity_time=activity_time,
+            vehicle_info=vehicle_info,
+        )
         
         # DOME V4 Audit Trail
         try:
@@ -328,8 +340,8 @@ def _process_update(supabase, row):
             log.warning(f"  [Date] Could not parse activity date {activity_date_str}: {e}")
 
     # -- ABSOLUTE DELTA DETECTION --
-    # Check if ANY field in the payload actually changed
-    any_field_changed = False
+    # Collect ALL changed fields for detailed Slack reporting
+    changes_list = []  # List of {"field": str, "old": str, "new": str}
     for k, v in db_updates.items():
         old_v = existing_row.get(k)
         
@@ -345,10 +357,10 @@ def _process_update(supabase, row):
             except ValueError:
                 pass
                 
-            any_field_changed = True
+            changes_list.append({"field": k, "old": old_str or "(empty)", "new": new_str})
             log.info(f"  [Delta] Field '{k}' changed: '{old_str}' -> '{new_str}'")
-            # Don't break here so we can log all changes if needed, or just break for speed.
-            break
+    
+    any_field_changed = len(changes_list) > 0
 
     if not any_field_changed:
         log.info(f"  [Delta] Absolutely no mapped fields changed for {tw_conf}. Skipping webhook entirely.")
@@ -384,6 +396,7 @@ def _process_update(supabase, row):
     
     # Check if there's multiple MPWR IDs (e.g. mixed bookings). For now, assume 1-to-1 or split update logic.
     mpwr_ids = [i.strip() for i in mpwr_number.split(",") if i.strip()]
+    customer_name = bot_payload.get("customer_name", "Unknown")
     all_success = True
 
     for current_id in mpwr_ids:
@@ -392,14 +405,12 @@ def _process_update(supabase, row):
         if not success:
             all_success = False
             log.error(f"  ❌ [Update] Failed to update MPOWR reservation {current_id}.")
-            customer_name = bot_payload.get("customer_name", "Unknown")
-            slack.send_error_alert(
+            slack.send_update_failure(
                 customer_name=customer_name,
-                activity_date=bot_payload.get("activity_date", "Unknown"),
-                activity=bot_payload.get("activity", "Unknown"),
-                vehicle_type=bot_payload.get("mpowr_vehicle", "Unknown"),
-                error_reason=f"MPOWR bot attempted to reschedule but failed. Manual update required.\\nMPWR ID: {current_id}",
                 tw_confirmation=tw_conf,
+                mpowr_id=current_id,
+                error_reason="MPOWR bot attempted to reschedule but failed. Manual update required.",
+                attempted_changes=changes_list,
             )
 
     # 2. Update Supabase with incoming data REGARDLESS of MPOWR success,
@@ -415,7 +426,12 @@ def _process_update(supabase, row):
 
     if all_success:
         log.info(f"  ✅ [Update] Successfully updated MPOWR for {tw_conf}.")
-        slack.send_message(f"✅ [SYSTEM AUTOMATION] Successfully updated/rescheduled {tw_conf} (MPWR {mpwr_number}) based on TripWorks changes.")
+        slack.send_update_success(
+            customer_name=customer_name,
+            tw_confirmation=tw_conf,
+            mpowr_id=mpwr_number,
+            changes_list=changes_list,
+        )
         
         # DOME V4 Audit Trail
         try:

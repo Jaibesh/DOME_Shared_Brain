@@ -191,9 +191,9 @@ def process_webhooks():
                             _mark_webhook(row_id, "processed")
                             continue
                             
-                        # Split the ADJUSTED subtotal proportionally across all valid payloads
-                        # valid_payloads[0]["target_price"] already has Trip Safe deducted by the mapper
-                        adjusted_subtotal_dollars = valid_payloads[0].get("target_price", 0.0)
+                        # Sum each payload's per-order target_price for the split base
+                        # Each target_price is already correctly calculated per-tripOrder by the mapper
+                        adjusted_subtotal_dollars = sum(p.get("target_price", 0.0) for p in valid_payloads)
                         valid_payloads = split_subtotal(valid_payloads, adjusted_subtotal_dollars)
 
                         # Create the reservations
@@ -326,6 +326,7 @@ def process_webhooks():
                                     "Checked In By": "checked_in_by",
                                     "TW Booking Link": "tw_link",
                                     "Customer Portal Link": "customer_portal_link",
+                                    "TW Customer Portal URL": "tw_customer_portal_url",
                                     "Trip Method": "trip_method",
                                     "Notes": "notes",
                                     "Created At": "created_at",
@@ -396,6 +397,40 @@ def process_webhooks():
                                         
                                 supabase.table("reservations").upsert(snake_row).execute()
                                 log.info(f"[Dashboard] ✅ Successfully pushed {tw_conf} to Guest Database v2")
+                                
+                                # Generate QR code for TripWorks customer portal (Epic waiver completion)
+                                tw_portal_url = snake_row.get("tw_customer_portal_url", "")
+                                if tw_portal_url:
+                                    try:
+                                        import qrcode
+                                        import io
+                                        qr = qrcode.make(tw_portal_url)
+                                        buffer = io.BytesIO()
+                                        qr.save(buffer, format="PNG")
+                                        buffer.seek(0)
+                                        
+                                        # Upload to Supabase Storage
+                                        qr_file_path = f"portal_{tw_conf}.png"
+                                        try:
+                                            supabase.storage.from_("waiver-qr-codes").remove([qr_file_path])
+                                        except Exception:
+                                            pass
+                                        supabase.storage.from_("waiver-qr-codes").upload(
+                                            path=qr_file_path,
+                                            file=buffer.getvalue(),
+                                            file_options={"content-type": "image/png", "upsert": "true"},
+                                        )
+                                        qr_public_url = supabase.storage.from_("waiver-qr-codes").get_public_url(qr_file_path)
+                                        
+                                        # Update the reservation with the QR code URL
+                                        supabase.table("reservations").update({
+                                            "tw_customer_portal_qr_url": qr_public_url,
+                                        }).eq("tw_confirmation", tw_conf.upper()).execute()
+                                        log.info(f"[QR] ✅ Generated customer portal QR for {tw_conf}")
+                                    except ImportError:
+                                        log.warning(f"[QR] qrcode library not installed. Skipping QR generation for {tw_conf}.")
+                                    except Exception as qr_err:
+                                        log.warning(f"[QR] Failed to generate portal QR for {tw_conf}: {qr_err}")
                                 
                                 # Update in-memory cache
                                 if dashboard_records is not None:
