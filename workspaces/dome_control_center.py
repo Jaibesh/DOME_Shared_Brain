@@ -529,12 +529,20 @@ class DOMEControlCenter(ctk.CTk):
         agent = self.agents[self.selected_index]
         log_lines = list(agent.log_buffer)
 
+        # Skip re-render if nothing has changed (prevents scroll disruption)
+        new_content = "\n".join(log_lines)
+        if not force and hasattr(self, '_last_log_content') and self._last_log_content == new_content:
+            return
+        self._last_log_content = new_content
+
         # Check if user has scrolled up (don't auto-scroll if so)
         try:
             yview = self._log_text._textbox.yview()
             at_bottom = yview[1] >= 0.98
+            saved_yview = yview[0]  # Save top-of-viewport position
         except Exception:
             at_bottom = True
+            saved_yview = 0.0
 
         self._log_text.configure(state="normal")
         self._log_text._textbox.delete("1.0", "end")
@@ -545,6 +553,9 @@ class DOMEControlCenter(ctk.CTk):
 
         if at_bottom:
             self._log_text._textbox.see("end")
+        else:
+            # Restore the user's scroll position
+            self._log_text._textbox.yview_moveto(saved_yview)
 
     def _classify_line(self, line: str) -> str:
         """Determine color tag based on log content."""
