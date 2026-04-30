@@ -91,11 +91,14 @@ def increment_waiver_count(tw_conf: str, waiver_type: str, signer_name: str) -> 
         current_count = row.get(count_col, 0) or 0
         current_names = row.get(names_col, []) or []
         
+        import difflib
+        
         clean_name = re.sub(r'\s*\(\d+.*?\)\s*$', '', signer_name).strip().lower()
         existing_clean = [re.sub(r'\s*\(\d+.*?\)\s*$', '', n).strip().lower() for n in current_names]
         
-        if clean_name in existing_clean:
-            return True # Already signed
+        for e_clean in existing_clean:
+            if clean_name == e_clean or difflib.SequenceMatcher(None, clean_name, e_clean).ratio() > 0.8:
+                return True # Already signed
         
         new_names = current_names + [signer_name]
         updates = {

@@ -199,6 +199,10 @@ def _process_cancel(supabase, row):
 
     if success:
         log.info(f"  ✅ [Cancel] Successfully canceled {mpwr_number} in MPOWR.")
+        
+        # Check if deposit was collected to trigger refund alert
+        requires_refund = existing_row.get("deposit_status") == "Collected" if existing_row else False
+
         slack.send_cancel_success(
             customer_name=customer_name,
             tw_confirmation=tw_conf,
@@ -206,6 +210,7 @@ def _process_cancel(supabase, row):
             activity_date=activity_date_str,
             activity_time=activity_time,
             vehicle_info=vehicle_info,
+            requires_refund=requires_refund
         )
         
         # DOME V4 Audit Trail

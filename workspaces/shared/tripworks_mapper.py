@@ -1373,7 +1373,7 @@ def extract_update_data(payload: dict) -> dict:
         "guest_name": f"{p['first_name']} {p['last_name']}".strip(),
         "phone": p["phone"],
         "activity_name": p["activity"],
-        "activity_date": p["activity_date"],
+        "activity_date": date_obj.strftime("%Y-%m-%d"),
         "activity_time": p["activity_time"],
         "vehicle_model": p["mpowr_vehicle"],
         "vehicle_qty": total_vehicles,

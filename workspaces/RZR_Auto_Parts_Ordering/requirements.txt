@@ -1,0 +1,19 @@
+# RZR Auto Parts AI — Knowledge Engine
+
+# PDF Extraction
+PyMuPDF>=1.24.0
+
+# Ollama Integration
+ollama>=0.4.0
+
+# Supabase Client
+supabase>=2.0.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Data Processing
+pydantic>=2.0.0
+
+# Image processing (for schematic extraction)
+Pillow>=10.0.0

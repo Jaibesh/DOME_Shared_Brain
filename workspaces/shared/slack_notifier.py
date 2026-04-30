@@ -324,7 +324,8 @@ class SlackNotifier:
 
     def send_cancel_success(self, customer_name: str, tw_confirmation: str,
                              mpowr_id: str, activity_date: str = "",
-                             activity_time: str = "", vehicle_info: str = ""):
+                             activity_time: str = "", vehicle_info: str = "",
+                             requires_refund: bool = False):
         """Send detailed cancellation notification with reservation details."""
         fields = [
             {"type": "mrkdwn", "text": f"*Customer:*\n{customer_name}"},
@@ -342,9 +343,18 @@ class SlackNotifier:
             {"type": "header", "text": {"type": "plain_text", "text": "🗑️ Reservation Cancelled in MPOWR", "emoji": True}},
             {"type": "section", "fields": fields},
             {"type": "section", "text": {"type": "mrkdwn", "text": "*Reason:* TripWorks booking cancelled by customer or staff."}},
+        ]
+        
+        if requires_refund:
+            blocks.append({
+                "type": "context",
+                "elements": [{"type": "mrkdwn", "text": "⚠️ *NOTE: Deposit of $250 requires manual refund via MPOWR!*"}]
+            })
+            
+        blocks.extend([
             self._agent_context(),
             {"type": "divider"},
-        ]
+        ])
         detail = f" | {activity_date} {activity_time}" if activity_date else ""
         fallback = f"🗑️ Cancelled: {customer_name} ({tw_confirmation}) — MPOWR #{mpowr_id}{detail}"
         self._send_message(blocks, fallback)
