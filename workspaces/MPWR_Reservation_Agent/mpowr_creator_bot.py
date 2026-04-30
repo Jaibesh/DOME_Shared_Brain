@@ -1425,11 +1425,31 @@ class MpowrCreatorBot:
                 if plus_btn.is_visible():
                     print(f"  ✅ Guide add-on already in cart: {label}")
                     if quantity > 1:
-                        # Assuming it auto-loaded at quantity=1
-                        for _ in range(quantity - 1):
+                        # Click + button for each additional unit needed
+                        for click_num in range(quantity - 1):
+                            # RE-FIND the guide card and + button each iteration
+                            # React re-renders the cart after each qty change, making old references stale
+                            guide_card = self._page.locator("div").filter(
+                                has=self._page.get_by_text(label, exact=False)
+                            ).filter(
+                                has=self._page.locator("button").filter(has_text="+")
+                            ).last
+                            plus_btn = guide_card.locator("button").filter(has_text="+").first
                             plus_btn.click()
                             time.sleep(2.0)  # Wait for React to process the cart update
-                        print(f"  ✅ Guide quantity increased to {quantity}")
+                            print(f"  ✅ Guide quantity incremented ({click_num + 2}/{quantity})")
+                        
+                        # Verify the final quantity by reading the displayed number
+                        try:
+                            guide_card = self._page.locator("div").filter(
+                                has=self._page.get_by_text(label, exact=False)
+                            ).filter(
+                                has=self._page.locator("button").filter(has_text="+")
+                            ).last
+                            qty_text = guide_card.inner_text()
+                            print(f"  ✅ Guide quantity set. Cart text: {qty_text[:80]}")
+                        except:
+                            pass
                 else:
                     guides_to_add.append(guide)
 
