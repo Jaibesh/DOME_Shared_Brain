@@ -12,10 +12,13 @@ import time
 from datetime import datetime
 from dotenv import load_dotenv, find_dotenv
 
+# CRITICAL: Load .env BEFORE any imports that create SlackNotifier singletons.
+# The webhook_processor → slack_notifier import chain reads SLACK_WEBHOOK_URL
+# at module-load time. If .env isn't loaded yet, Slack will be disabled.
+load_dotenv(find_dotenv())
+
 from webhook_processor import process_webhooks
 from bot_logger import get_bot_logger
-
-load_dotenv(find_dotenv())
 log = get_bot_logger()
 
 # Check for required .env vars
