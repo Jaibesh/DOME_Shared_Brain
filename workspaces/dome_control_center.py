@@ -514,7 +514,8 @@ class DOMEControlCenter(ctk.CTk):
             else:
                 card.configure(fg_color=BG_CARD, border_color="#30363d")
 
-        # Force immediate log refresh
+        # Force immediate log refresh (clear cache so new agent's logs render immediately)
+        self._last_log_content = None
         self._update_log_viewer(force=True)
 
     def _update_log_viewer(self, force=False):

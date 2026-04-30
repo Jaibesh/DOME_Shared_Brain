@@ -6,14 +6,15 @@ from pytz import timezone
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 
+# CRITICAL: Load .env BEFORE importing modules that create SlackNotifier singletons.
+load_dotenv()
+
 # Add shared modules
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), "shared"))
 from supabase_client import get_supabase
 from slack_notifier import SlackNotifier
 
 from mpowr_return_bot import MpowrReturnBot
-
-load_dotenv()
 
 AGENT_NAME = "MPWR_Return_Agent"
 POLL_INTERVAL_MINS = 60

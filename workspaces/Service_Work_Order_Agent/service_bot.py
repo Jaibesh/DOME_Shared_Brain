@@ -1,9 +1,8 @@
-import os
 import sys
 import time
 import re
 from pathlib import Path
-from playwright.sync_api import sync_playwright, Page, expect
+from playwright.sync_api import sync_playwright
 
 # Add workspaces directory to sys.path to import shared modules
 WORKSPACE_DIR = Path(__file__).parent.parent
