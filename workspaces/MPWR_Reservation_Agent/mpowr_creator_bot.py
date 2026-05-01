@@ -532,6 +532,28 @@ class MpowrCreatorBot:
             print("  \u23f3 Waiting for MPOWR inventory refresh...")
             time.sleep(3)
 
+            # Pre-flight: Verify vehicle inventory has loaded (date was accepted)
+            must_select_date = self._page.get_by_text("Must Select Ride Date", exact=False)
+            try:
+                if must_select_date.is_visible(timeout=1000):
+                    print("  ⚠️ MPOWR still shows 'Must Select Ride Date' — date selection did not register.")
+                    print("  ⚠️ Retrying date selection via input field fallback...")
+                    date_input = self._page.get_by_label(re.compile(r"date", re.IGNORECASE)).first
+                    if date_input.is_visible(timeout=3000):
+                        formatted = f"{customer['activity_date']}"
+                        date_input.click()
+                        date_input.fill(formatted)
+                        date_input.press("Enter")
+                        time.sleep(3)
+                        # Re-check
+                        if must_select_date.is_visible(timeout=2000):
+                            raise ValueError("Date selection failed — MPOWR refuses to load vehicle inventory.")
+                        print("  ✅ Date fallback succeeded — inventory loaded.")
+            except ValueError:
+                raise
+            except Exception:
+                pass  # 'Must Select Ride Date' not visible — good, inventory loaded
+
             # Step 5: Select Vehicle & Quantity
             vehicles = customer.get("vehicles", [{"model": customer["mpowr_vehicle"], "qty": customer.get("vehicle_qty", 1)}])
             print(f"\n[Step 5] Selecting {len(vehicles)} vehicle type(s)...")
@@ -1336,7 +1358,19 @@ class MpowrCreatorBot:
                 
                 if select_el.input_value() != qty:
                     select_el.select_option(value=qty)
-                    print(f"  ✅ Set {vehicle_name} quantity to {qty}")
+                    # Force React to detect the change via native DOM event dispatch
+                    select_el.evaluate("""el => {
+                        el.dispatchEvent(new Event('change', { bubbles: true }));
+                        el.dispatchEvent(new Event('input', { bubbles: true }));
+                    }""")
+                    time.sleep(1)
+                    
+                    # Verify the select actually holds the new value
+                    actual_val = select_el.input_value()
+                    if actual_val == qty:
+                        print(f"  ✅ Set {vehicle_name} quantity to {qty} (verified)")
+                    else:
+                        print(f"  ⚠️ Set {vehicle_name} to {qty} but select shows '{actual_val}' — React may not have accepted the change")
                     
                     # Dismiss any AdventureAssure modal that triggers on quantity change
                     time.sleep(1)
