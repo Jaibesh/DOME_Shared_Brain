@@ -150,7 +150,7 @@ def _process_cancel(supabase, row):
     # Lookup MPWR ID and reservation details from Supabase
     try:
         res = supabase.table("reservations").select(
-            "mpwr_number, activity_date, activity_time, guest_name, vehicle_model, vehicle_qty, activity_name"
+            "mpwr_number, activity_date, activity_time, guest_name, vehicle_model, vehicle_qty, activity_name, deposit_status"
         ).eq("tw_confirmation", tw_conf.upper()).execute()
         if not res.data:
             retry_count = row.get("retry_count", 0)

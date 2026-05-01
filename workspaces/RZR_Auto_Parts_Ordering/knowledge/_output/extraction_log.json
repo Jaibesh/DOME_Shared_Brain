@@ -1,0 +1,1492 @@
+[
+  {
+    "file": "BODY, CARGO BOX.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, CARGO BOX",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, CARGO BOX.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, CARGO BOX",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "BODY, CENTER CONSOLE.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, CENTER CONSOLE",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, DASH LOWER.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, DASH LOWER",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, DASH LOWER.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, DASH LOWER",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "BODY, DASH, UPPER.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, DASH, UPPER",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, DASH, UPPER.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, DASH, UPPER",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "BODY, DECALS 2.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, DECALS 2",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, DECALS 2.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, DECALS 2",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "BODY, DECALS.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, DECALS",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, DECALS.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, DECALS",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "BODY, DOORS, FRONT.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, DOORS, FRONT",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, DOORS, FRONT.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, DOORS, FRONT",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "BODY, DOORS, REAR.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, DOORS, REAR",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, DOORS, REAR.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, DOORS, REAR",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "BODY, FLOOR PANELS, FRONT.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, FLOOR PANELS, FRONT",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, FLOOR PANELS, REAR.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, FLOOR PANELS, REAR",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, FRONT BUMPER.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, FRONT BUMPER",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, FRONT BUMPER.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, FRONT BUMPER",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "BODY, FRONT FENDER AND HOOD.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, FRONT FENDER AND HOOD",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, FRONT FENDER AND HOOD.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, FRONT FENDER AND HOOD",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "BODY, FRONT FLARES AND DUCTING.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, FRONT FLARES AND DUCTING",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, GRAB BAR, PASSENGER.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, GRAB BAR, PASSENGER",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, REAR BUMPER.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, REAR BUMPER",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, REAR CLOSEOFF.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, REAR CLOSEOFF",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, REAR FENDERS.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, REAR FENDERS",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, REAR FENDERS.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, REAR FENDERS",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "BODY, ROCKERS.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, ROCKERS",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, ROOF.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, ROOF",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, ROOF.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, ROOF",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "BODY, SEAT ASM, & MOUNTING, REAR.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, SEAT ASM, & MOUNTING, REAR",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, SEAT ASM, & MOUNTING, REAR.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, SEAT ASM, & MOUNTING, REAR",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "BODY, SEAT BELT MOUNTING, FRONT.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, SEAT BELT MOUNTING, FRONT",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BODY, SEAT BELT MOUNTING, FRONT.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, SEAT BELT MOUNTING, FRONT",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "BODY, SEAT BELT MOUNTING.pdf",
+    "folder": "Pro S4",
+    "assembly": "BODY, SEAT BELT MOUNTING",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BRAKES, BRAKE LINES AND MASTER CYLINDER.pdf",
+    "folder": "Pro S4",
+    "assembly": "BRAKES, BRAKE LINES AND MASTER CYLINDER",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BRAKES, BRAKE LINES AND MASTER CYLINDER.pdf",
+    "folder": "Pro S4",
+    "assembly": "BRAKES, BRAKE LINES AND MASTER CYLINDER",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "BRAKES, CALIPER MOUNTING AND ROTORS.pdf",
+    "folder": "Pro S4",
+    "assembly": "BRAKES, CALIPER MOUNTING AND ROTORS",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BRAKES, CALIPER, FRONT.pdf",
+    "folder": "Pro S4",
+    "assembly": "BRAKES, CALIPER, FRONT",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BRAKES, CALIPER, REAR.pdf",
+    "folder": "Pro S4",
+    "assembly": "BRAKES, CALIPER, REAR",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "BRAKES, CALIPER, REAR.pdf",
+    "folder": "Pro S4",
+    "assembly": "BRAKES, CALIPER, REAR",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "BRAKES, PEDAL.pdf",
+    "folder": "Pro S4",
+    "assembly": "BRAKES, PEDAL",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "CHASSIS, BOX MOUNTING.pdf",
+    "folder": "Pro S4",
+    "assembly": "CHASSIS, BOX MOUNTING",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "CHASSIS, CAB FRAME.pdf",
+    "folder": "Pro S4",
+    "assembly": "CHASSIS, CAB FRAME",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "CHASSIS, FRONT GEARCASE AND BUMPER MOUNTING.pdf",
+    "folder": "Pro S4",
+    "assembly": "CHASSIS, FRONT GEARCASE AND BUMPER MOUNTING",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "CHASSIS, MAIN FRAME AND SKID PLATES.pdf",
+    "folder": "Pro S4",
+    "assembly": "CHASSIS, MAIN FRAME AND SKID PLATES",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "CHASSIS, MOUNTING AND BRACKETS.pdf",
+    "folder": "Pro S4",
+    "assembly": "CHASSIS, MOUNTING AND BRACKETS",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "CHASSIS, MOUNTING AND BRACKETS.pdf",
+    "folder": "Pro S4",
+    "assembly": "CHASSIS, MOUNTING AND BRACKETS",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, CLUTCH COVER DUCTING.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, CLUTCH COVER DUCTING",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, CLUTCH COVER, INNER-OUTER.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, CLUTCH COVER, INNER-OUTER",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, CLUTCH COVER, INNER-OUTER.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, CLUTCH COVER, INNER-OUTER",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, FRONT GEARCASE.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, FRONT GEARCASE",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, FRONT GEARCASE.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, FRONT GEARCASE",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, GEAR SELECTOR.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, GEAR SELECTOR",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, GEAR SELECTOR.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, GEAR SELECTOR",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, GEARCASE, FRONT, VENTING.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, GEARCASE, FRONT, VENTING",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, HALF SHAFT, FRONT.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, HALF SHAFT, FRONT",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, HALF SHAFT, FRONT.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, HALF SHAFT, FRONT",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, HALF SHAFT, REAR.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, HALF SHAFT, REAR",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, HALF SHAFT, REAR.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, HALF SHAFT, REAR",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, MAIN GEARCASE INTERNALS.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, MAIN GEARCASE INTERNALS",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, MAIN GEARCASE INTERNALS.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, MAIN GEARCASE INTERNALS",
+    "page": 2,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, MAIN GEARCASE INTERNALS.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, MAIN GEARCASE INTERNALS",
+    "page": 3,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, MAIN GEARCASE INTERNALS.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, MAIN GEARCASE INTERNALS",
+    "page": 4,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, MAIN GEARCASE INTERNALS.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, MAIN GEARCASE INTERNALS",
+    "page": 5,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, MAIN GEARCASE INTERNALS.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, MAIN GEARCASE INTERNALS",
+    "page": 6,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, MAIN GEARCASE MOUNTING.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, MAIN GEARCASE MOUNTING",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, PRIMARY CLUTCH.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, PRIMARY CLUTCH",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, PRIMARY CLUTCH.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, PRIMARY CLUTCH",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, PROP SHAFT, FRONT.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, PROP SHAFT, FRONT",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, PROP SHAFT, MID.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, PROP SHAFT, MID",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, PROP SHAFT, REAR.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, PROP SHAFT, REAR",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, SECONDARY CLUTCH-BELT.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, SECONDARY CLUTCH-BELT",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "DRIVE TRAIN, SECONDARY CLUTCH-BELT.pdf",
+    "folder": "Pro S4",
+    "assembly": "DRIVE TRAIN, SECONDARY CLUTCH-BELT",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "ELECTRICAL, AUDIO, FRONT.pdf",
+    "folder": "Pro S4",
+    "assembly": "ELECTRICAL, AUDIO, FRONT",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ELECTRICAL, AUDIO, FRONT.pdf",
+    "folder": "Pro S4",
+    "assembly": "ELECTRICAL, AUDIO, FRONT",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "ELECTRICAL, AUDIO, REAR.pdf",
+    "folder": "Pro S4",
+    "assembly": "ELECTRICAL, AUDIO, REAR",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ELECTRICAL, BATTERY AND RELATED.pdf",
+    "folder": "Pro S4",
+    "assembly": "ELECTRICAL, BATTERY AND RELATED",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ELECTRICAL, BATTERY AND RELATED.pdf",
+    "folder": "Pro S4",
+    "assembly": "ELECTRICAL, BATTERY AND RELATED",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "ELECTRICAL, DASH INSTRUMENTS AND CONTROLS.pdf",
+    "folder": "Pro S4",
+    "assembly": "ELECTRICAL, DASH INSTRUMENTS AND CONTROLS",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ELECTRICAL, DASH INSTRUMENTS, CONTROLS, & LIGHTING.pdf",
+    "folder": "Pro S4",
+    "assembly": "ELECTRICAL, DASH INSTRUMENTS, CONTROLS, & LIGHTING",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ELECTRICAL, DASH INSTRUMENTS, CONTROLS, & LIGHTING.pdf",
+    "folder": "Pro S4",
+    "assembly": "ELECTRICAL, DASH INSTRUMENTS, CONTROLS, & LIGHTING",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "ELECTRICAL, ECU.pdf",
+    "folder": "Pro S4",
+    "assembly": "ELECTRICAL, ECU",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ELECTRICAL, HEADLIGHTS AND TAILLIGHTS.pdf",
+    "folder": "Pro S4",
+    "assembly": "ELECTRICAL, HEADLIGHTS AND TAILLIGHTS",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ELECTRICAL, RIDE COMMAND.pdf",
+    "folder": "Pro S4",
+    "assembly": "ELECTRICAL, RIDE COMMAND",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ELECTRICAL, WIRE HARNESS, CHASSIS.pdf",
+    "folder": "Pro S4",
+    "assembly": "ELECTRICAL, WIRE HARNESS, CHASSIS",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ELECTRICAL, WIRE HARNESS, CHASSIS.pdf",
+    "folder": "Pro S4",
+    "assembly": "ELECTRICAL, WIRE HARNESS, CHASSIS",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "ELECTRICAL, WIRE HARNESS, PERIPHERAL.pdf",
+    "folder": "Pro S4",
+    "assembly": "ELECTRICAL, WIRE HARNESS, PERIPHERAL",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, AIR INTAKE MANIFOLD.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, AIR INTAKE MANIFOLD",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, AIR INTAKE MANIFOLD.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, AIR INTAKE MANIFOLD",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, AIR INTAKE SYSTEM.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, AIR INTAKE SYSTEM",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, AIR INTAKE SYSTEM.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, AIR INTAKE SYSTEM",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, CAM CHAIN AND TENSIONER.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, CAM CHAIN AND TENSIONER",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, COILS & SPARK PLUGS.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, COILS & SPARK PLUGS",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, COOLING MOUNTING.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, COOLING MOUNTING",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, COOLING, SURGE TANK & HOSES.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, COOLING, SURGE TANK & HOSES",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, COOLING, WATERPUMP ASM.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, COOLING, WATERPUMP ASM",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, COOLING.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, COOLING",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, COOLING.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, COOLING",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, CRANKCASE.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, CRANKCASE",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, CRANKSHAFT AND BEARINGS.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, CRANKSHAFT AND BEARINGS",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, CRANKSHAFT AND BEARINGS.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, CRANKSHAFT AND BEARINGS",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, CYLINDER AND PISTON.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, CYLINDER AND PISTON",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, CYLINDER HEAD.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, CYLINDER HEAD",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, DIPSTICK AND OIL FILTER.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, DIPSTICK AND OIL FILTER",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, EXHAUST.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, EXHAUST",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, EXHAUST.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, EXHAUST",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, OIL PUMP & PAN.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, OIL PUMP & PAN",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, STARTER.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, STARTER",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, STATOR AND FLYWHEEL.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, STATOR AND FLYWHEEL",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, STATOR AND FLYWHEEL.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, STATOR AND FLYWHEEL",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, THROTTLE PEDAL.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, THROTTLE PEDAL",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, TURBO BOOST VALVE.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, TURBO BOOST VALVE",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, TURBO COOLING AND OIL.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, TURBO COOLING AND OIL",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, TURBO COOLING AND OIL.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, TURBO COOLING AND OIL",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, TURBO MOUNTING.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, TURBO MOUNTING",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, TURBO.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, TURBO",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, VALVE COVER.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, VALVE COVER",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, VALVES.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, VALVES",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, VALVES.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, VALVES",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, WATERPUMP AND BYPASS.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, WATERPUMP AND BYPASS",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "ENGINE, WATERPUMP AND BYPASS.pdf",
+    "folder": "Pro S4",
+    "assembly": "ENGINE, WATERPUMP AND BYPASS",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "FUEL SYSTEM, EVAP.pdf",
+    "folder": "Pro S4",
+    "assembly": "FUEL SYSTEM, EVAP",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "FUEL SYSTEM, EVAP.pdf",
+    "folder": "Pro S4",
+    "assembly": "FUEL SYSTEM, EVAP",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "FUEL SYSTEM, STD.pdf",
+    "folder": "Pro S4",
+    "assembly": "FUEL SYSTEM, STD",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "FUEL SYSTEM, STD.pdf",
+    "folder": "Pro S4",
+    "assembly": "FUEL SYSTEM, STD",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "REFERENCE, OWNERS MANUAL AND TOOL KIT.pdf",
+    "folder": "Pro S4",
+    "assembly": "REFERENCE, OWNERS MANUAL AND TOOL KIT",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "REFERENCE, OWNERS MANUAL AND TOOL KIT.pdf",
+    "folder": "Pro S4",
+    "assembly": "REFERENCE, OWNERS MANUAL AND TOOL KIT",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "SERVICE & MAINTENANCE - RZR PRO S CREW MAINTENANCE PAGE.pdf",
+    "folder": "Pro S4",
+    "assembly": "SERVICE & MAINTENANCE",
+    "page": 1,
+    "type": "maintenance",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "SERVICE & MAINTENANCE - RZR PRO S CREW MAINTENANCE PAGE.pdf",
+    "folder": "Pro S4",
+    "assembly": "SERVICE & MAINTENANCE",
+    "page": 2,
+    "type": "maintenance",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "STEERING, GEAR BOX W-EPS AND RELATED.pdf",
+    "folder": "Pro S4",
+    "assembly": "STEERING, GEAR BOX W-EPS AND RELATED",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "STEERING, LINKAGE & TILT.pdf",
+    "folder": "Pro S4",
+    "assembly": "STEERING, LINKAGE & TILT",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "STEERING, WHEEL.pdf",
+    "folder": "Pro S4",
+    "assembly": "STEERING, WHEEL",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "SUSPENSION, FRONT CARRIER AND HUB.pdf",
+    "folder": "Pro S4",
+    "assembly": "SUSPENSION, FRONT CARRIER AND HUB",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "SUSPENSION, FRONT CONTROL ARM UPPER.pdf",
+    "folder": "Pro S4",
+    "assembly": "SUSPENSION, FRONT CONTROL ARM UPPER",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "SUSPENSION, FRONT CONTROL ARM UPPER.pdf",
+    "folder": "Pro S4",
+    "assembly": "SUSPENSION, FRONT CONTROL ARM UPPER",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "SUSPENSION, FRONT CONTROL ARMS LOWER.pdf",
+    "folder": "Pro S4",
+    "assembly": "SUSPENSION, FRONT CONTROL ARMS LOWER",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "SUSPENSION, FRONT CONTROL ARMS LOWER.pdf",
+    "folder": "Pro S4",
+    "assembly": "SUSPENSION, FRONT CONTROL ARMS LOWER",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "SUSPENSION, FRONT CONTROL ARMS MOUNTING.pdf",
+    "folder": "Pro S4",
+    "assembly": "SUSPENSION, FRONT CONTROL ARMS MOUNTING",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "SUSPENSION, FRONT SHOCK MOUNTING.pdf",
+    "folder": "Pro S4",
+    "assembly": "SUSPENSION, FRONT SHOCK MOUNTING",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "SUSPENSION, FRONT SHOCK MOUNTING.pdf",
+    "folder": "Pro S4",
+    "assembly": "SUSPENSION, FRONT SHOCK MOUNTING",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "SUSPENSION, FRONT STABILIZER BAR.pdf",
+    "folder": "Pro S4",
+    "assembly": "SUSPENSION, FRONT STABILIZER BAR",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "SUSPENSION, REAR CARRIER AND HUB.pdf",
+    "folder": "Pro S4",
+    "assembly": "SUSPENSION, REAR CARRIER AND HUB",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "SUSPENSION, REAR SHOCK & MOUNTING.pdf",
+    "folder": "Pro S4",
+    "assembly": "SUSPENSION, REAR SHOCK & MOUNTING",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "SUSPENSION, REAR SHOCK & MOUNTING.pdf",
+    "folder": "Pro S4",
+    "assembly": "SUSPENSION, REAR SHOCK & MOUNTING",
+    "page": 2,
+    "type": "text",
+    "text_length": 0,
+    "has_images": false,
+    "preview": ""
+  },
+  {
+    "file": "SUSPENSION, REAR STABILIZER BAR.pdf",
+    "folder": "Pro S4",
+    "assembly": "SUSPENSION, REAR STABILIZER BAR",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "SUSPENSION, REAR TRAILING ARMS MOUNTING.pdf",
+    "folder": "Pro S4",
+    "assembly": "SUSPENSION, REAR TRAILING ARMS MOUNTING",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "SUSPENSION, TRAILING ARMS.pdf",
+    "folder": "Pro S4",
+    "assembly": "SUSPENSION, TRAILING ARMS",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  },
+  {
+    "file": "WHEELS, FRONT-REAR.pdf",
+    "folder": "Pro S4",
+    "assembly": "WHEELS, FRONT-REAR",
+    "page": 1,
+    "type": "schematic",
+    "text_length": 0,
+    "has_images": true,
+    "preview": ""
+  }
+]

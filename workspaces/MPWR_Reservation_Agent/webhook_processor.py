@@ -29,6 +29,200 @@ def _create_bot():
     headless = os.getenv("CREATOR_HEADLESS", "true").lower() == "true"
     return MpowrCreatorBot(email=email, password=pwd, headless=headless, dry_run=dry_run)
 
+
+def _generate_and_upload_qr(supabase, tw_conf, tw_portal_url):
+    """Generate a QR code for the TripWorks customer portal and upload to Supabase Storage.
+    
+    Designed to run in a background thread so it doesn't block webhook processing.
+    """
+    try:
+        import qrcode
+        import io
+        qr = qrcode.make(tw_portal_url)
+        buffer = io.BytesIO()
+        qr.save(buffer, format="PNG")
+        buffer.seek(0)
+        
+        qr_file_path = f"portal_{tw_conf}.png"
+        try:
+            supabase.storage.from_("waiver-qr-codes").remove([qr_file_path])
+        except Exception:
+            pass
+        supabase.storage.from_("waiver-qr-codes").upload(
+            path=qr_file_path,
+            file=buffer.getvalue(),
+            file_options={"content-type": "image/png", "upsert": "true"},
+        )
+        qr_public_url = supabase.storage.from_("waiver-qr-codes").get_public_url(qr_file_path)
+        
+        supabase.table("reservations").update({
+            "tw_customer_portal_qr_url": qr_public_url,
+        }).eq("tw_confirmation", tw_conf.upper()).execute()
+        log.info(f"[QR] ✅ Generated customer portal QR for {tw_conf} (async)")
+    except ImportError:
+        log.warning(f"[QR] qrcode library not installed. Skipping QR generation for {tw_conf}.")
+    except Exception as qr_err:
+        log.warning(f"[QR] Failed to generate portal QR for {tw_conf}: {qr_err}")
+
+
+def _build_supabase_row(tw_conf, payload, valid_payloads, adjusted_subtotal_dollars, mpwr_conf_joined=None):
+    """Build a Supabase-ready dict from webhook data for the reservations table.
+    
+    Extracts and maps all dashboard fields from the webhook payload, performs type 
+    coercion, date normalization, and booking ID extraction.
+    """
+    from shared.tripworks_mapper import map_legacy_to_dashboard
+    from datetime import datetime as _dt
+    
+    primary_p = valid_payloads[0]
+    row_for_dash = {
+        "TW Confirmation": tw_conf,
+        "First Name": primary_p["first_name"],
+        "Last Name": primary_p["last_name"],
+        "Email": (payload.get("customer") or {}).get("email", ""),
+        "Phone": primary_p["phone"],
+        "Activity": primary_p["activity"] + (" (+More)" if len(valid_payloads) > 1 else ""),
+        "Activity Date": primary_p["activity_date"],
+        "Activity Time": primary_p["activity_time"],
+        "Ticket Type": "",
+        "Party Size": primary_p.get("party_size", 1),
+        "Sub-Total": adjusted_subtotal_dollars,
+        "Notes": "",
+        "has_adventure_assure": "adventure" in primary_p.get("insurance_label", "").lower(),
+        "has_tripsafe": primary_p.get("has_tripsafe", False),
+    }
+    dashboard_row = map_legacy_to_dashboard(
+        row=row_for_dash,
+        mpwr_conf_number=mpwr_conf_joined if mpwr_conf_joined else "",
+        webhook_payload=payload,
+    )
+    
+    # Override with correct values from primary_p (avoids BUG-4 fallback blanking)
+    if primary_p.get("mpowr_vehicle"):
+        dashboard_row["Vehicle Model"] = primary_p["mpowr_vehicle"]
+    if primary_p.get("mpowr_activity"):
+        dashboard_row["Activity Internal"] = primary_p["mpowr_activity"]
+    if primary_p.get("vehicle_qty"):
+        dashboard_row["Vehicle Qty"] = primary_p["vehicle_qty"]
+    
+    _DASH_TO_SUPABASE = {
+        "TW Confirmation": "tw_confirmation",
+        "TW Order ID": "tw_order_id",
+        "First Name": None,  # Combined into guest_name below
+        "Last Name": None,   # Combined into guest_name below
+        "Email": "email",
+        "Phone": "phone",
+        "Activity": "activity_name",
+        "Activity Internal": "activity_internal",
+        "Booking Type": "booking_type",
+        "Ticket Type": "ticket_type",
+        "Vehicle Model": "vehicle_model",
+        "Vehicle Qty": "vehicle_qty",
+        "Party Size": "party_size",
+        "Activity Date": "activity_date",
+        "Activity Time": "activity_time",
+        "End Time": "end_time",
+        "Normalized Date": None,
+        "Rental Return Time": "rental_return_time",
+        "Sub-Total": "sub_total",
+        "Total": "total",
+        "Amount Paid": "amount_paid",
+        "Amount Due": "amount_due",
+        "Adventure Assure": "adventure_assure",
+        "Trip Safe": "trip_safe",
+        "Deposit Status": "deposit_status",
+        "Payment Collected By": "payment_collected_by",
+        "Payment Notes": "payment_notes",
+        "MPWR Confirmation Number": "mpwr_number",
+        "MPWR Waiver Link": "mpwr_waiver_link",
+        "MPWR Status": None,
+        "Webhook Email": "webhook_email",
+        "Primary Rider": "primary_rider",
+        "Epic Waivers Expected": "epic_expected",
+        "Epic Waivers Complete": "epic_complete",
+        "Epic Waiver Names": "epic_names",
+        "Polaris Waivers Expected": "polaris_expected",
+        "Polaris Waivers Complete": "polaris_complete",
+        "Polaris Waiver Names": "polaris_names",
+        "OHV Required": "ohv_required",
+        "OHV Permits Expected": "ohv_expected",
+        "OHV Permits Uploaded": "ohv_complete",
+        "OHV Permit Names": "ohv_permit_names",
+        "OHV Uploaded": "ohv_uploaded",
+        "OHV File Path": "ohv_file_path",
+        "Rental Status": "rental_status",
+        "Checked In": "checked_in",
+        "Checked In At": "checked_in_at",
+        "Checked In By": "checked_in_by",
+        "TW Booking Link": "tw_link",
+        "Customer Portal Link": "customer_portal_link",
+        "TW Customer Portal URL": "tw_customer_portal_url",
+        "Trip Method": "trip_method",
+        "Notes": "notes",
+        "Created At": "created_at",
+        "Last Updated": "last_updated",
+    }
+    
+    snake_row = {}
+    for k, v in dashboard_row.items():
+        sb_col = _DASH_TO_SUPABASE.get(k)
+        if sb_col is None:
+            continue
+        if sb_col in ("ohv_required", "ohv_uploaded", "checked_in"):
+            snake_row[sb_col] = str(v).strip().upper() == "TRUE"
+        elif sb_col in ("epic_expected", "epic_complete", "polaris_expected", "polaris_complete",
+                         "ohv_expected", "ohv_complete", "party_size", "vehicle_qty"):
+            try:
+                snake_row[sb_col] = int(v) if v else 0
+            except (ValueError, TypeError):
+                snake_row[sb_col] = 0
+        elif sb_col in ("sub_total", "total", "amount_paid", "amount_due"):
+            try:
+                snake_row[sb_col] = float(str(v).replace("$", "").replace(",", "")) if v else 0.0
+            except (ValueError, TypeError):
+                snake_row[sb_col] = 0.0
+        elif sb_col in ("epic_names", "polaris_names", "ohv_permit_names"):
+            snake_row[sb_col] = [x.strip() for x in str(v).split(",")] if v else []
+        elif sb_col in ("created_at", "last_updated", "checked_in_at"):
+            snake_row[sb_col] = str(v) if v else None
+        else:
+            snake_row[sb_col] = str(v) if v is not None else ""
+    
+    # Normalize activity_date from MM/DD/YYYY to YYYY-MM-DD
+    for date_col in ("activity_date", "end_date"):
+        if date_col in snake_row and "/" in str(snake_row[date_col]):
+            try:
+                snake_row[date_col] = _dt.strptime(snake_row[date_col], "%m/%d/%Y").strftime("%Y-%m-%d")
+            except (ValueError, TypeError):
+                pass
+    
+    # Build guest_name from First + Last
+    first = str(dashboard_row.get("First Name", "")).strip()
+    last = str(dashboard_row.get("Last Name", "")).strip()
+    snake_row["guest_name"] = f"{first} {last}".strip()
+    
+    # Extract TripWorks booking IDs for waiver webhook matching
+    booking_ids = []
+    for to in payload.get("tripOrders", []):
+        to_dict = to if isinstance(to, dict) else {}
+        for b in to_dict.get("bookings", []):
+            b_dict = b if isinstance(b, dict) else {}
+            bid = b_dict.get("id")
+            if bid and isinstance(bid, int):
+                booking_ids.append(bid)
+    if booking_ids:
+        snake_row["tw_booking_ids"] = booking_ids
+    
+    # Validate MPOWR ID if provided
+    if mpwr_conf_joined:
+        if _is_valid_mpwr_id(mpwr_conf_joined):
+            snake_row["mpwr_number"] = mpwr_conf_joined
+        else:
+            log.error(f"[Dashboard] Invalid MPOWR ID '{mpwr_conf_joined}' for {tw_conf}. Omitting.")
+            snake_row.pop("mpwr_number", None)
+            
+    return snake_row
+
 def process_webhooks():
     log.debug("[WebhookProcessor] Polling Supabase for pending webhooks...")
     
@@ -268,13 +462,11 @@ def process_webhooks():
                                 log.error(f"[Dashboard] Failed to update {tw_conf} with MPOWR ID: {db_err}")
 
                             # Update in-memory cache
-                                if dashboard_records is not None:
-                                    dashboard_records.append({
-                                        "tw_confirmation": tw_conf,
-                                        "mpwr_number": mpwr_conf_joined,
-                                    })
-                            except Exception as db_err:
-                                log.error(f"[Dashboard] Failed to push {tw_conf}: {db_err}")
+                            if dashboard_records is not None:
+                                dashboard_records.append({
+                                    "tw_confirmation": tw_conf,
+                                    "mpwr_number": mpwr_conf_joined,
+                                })
                             
                             # Flush all other webhook files for this TW Confirmation
                             _flush_other_webhooks_for_conf(tw_conf)
