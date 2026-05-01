@@ -142,51 +142,130 @@ def process_waiver_completed(body: dict, db_record_id: str):
     waiver_type_name = body.get("waiver_type", {}).get("name", "").lower()
     w_type = "polaris" if "polaris" in waiver_type_name else "epic"
 
-    # Extract Order ID
+    # Extract Order ID (booking-level ID from the waiver payload)
     order_id = ""
     if "bookings" in body and isinstance(body["bookings"], list) and len(body["bookings"]) > 0:
         order_id = str(body["bookings"][0].get("id", ""))
     elif "customer" in body and "bookings" in body["customer"] and isinstance(body["customer"]["bookings"], list) and len(body["customer"]["bookings"]) > 0:
         order_id = str(body["customer"]["bookings"][0].get("id", ""))
 
+    # Extract additional matching fields from the payload
+    experience_name = body.get("experience_name", "")
+    guest_last_name = body.get("last_name", "")
+
     # Resolve TW Confirmation Code
     if not guest_name and not order_id:
         raise ValueError("Payload missing guest name and order ID")
 
     supabase = get_supabase()
-    
-    # Scale Fix: Only pull recent/upcoming reservations to avoid loading the entire database into memory
-    thirty_days_ago = (datetime.now(MDT) - timedelta(days=30)).date().isoformat()
-    res = supabase.table("reservations").select("*").gte("activity_date", thirty_days_ago).execute()
-    records = res.data
-    
     target_conf = None
     target_row = None
-    guest_clean = guest_name.strip().lower()
-    
-    for row in records:
-        row_order = str(row.get("tw_order_id", "")).strip()
-        booking_ids = [str(bid) for bid in row.get("tw_booking_ids", [])]
 
-        if order_id and (row_order == order_id or order_id in booking_ids):
-            target_conf = str(row.get("tw_confirmation", "")).strip()
-            target_row = row
-            break
-            
-        guest = str(row.get("guest_name", "")).strip().lower()
-        if guest_clean and guest == guest_clean:
-            target_conf = str(row.get("tw_confirmation", "")).strip()
-            target_row = row
-            break
+    # ── Layer 1: Booking ID in tw_booking_ids (fastest, most precise) ──
+    if order_id:
+        try:
+            res = supabase.table("reservations").select("*") \
+                .filter("tw_booking_ids", "cs", f"[{order_id}]") \
+                .execute()
+            if res.data:
+                target_row = res.data[0]
+                target_conf = str(target_row.get("tw_confirmation", "")).strip()
+                print(f"  [Match] Layer 1 HIT: booking_id {order_id} -> {target_conf}")
+        except Exception as e:
+            print(f"  [Match] Layer 1 error: {e}")
 
-        row_email = str(row.get("webhook_email", "") or "").strip().lower()
-        if guest_email and row_email and guest_email == row_email:
-            target_conf = str(row.get("tw_confirmation", "")).strip()
-            target_row = row
-            break
+    # ── Layer 2: Exact guest name match (primary booker) ──
+    if not target_conf and guest_name:
+        try:
+            res = supabase.table("reservations").select("*") \
+                .eq("guest_name", guest_name.strip()) \
+                .gte("activity_date", (datetime.now(MDT) - timedelta(days=7)).date().isoformat()) \
+                .execute()
+            if res.data:
+                target_row = res.data[0]
+                target_conf = str(target_row.get("tw_confirmation", "")).strip()
+                print(f"  [Match] Layer 2 HIT: exact name '{guest_name}' -> {target_conf}")
+        except Exception as e:
+            print(f"  [Match] Layer 2 error: {e}")
+
+    # ── Layer 3: Email match against reservation email column ──
+    if not target_conf and guest_email:
+        try:
+            res = supabase.table("reservations").select("*") \
+                .eq("email", guest_email) \
+                .gte("activity_date", (datetime.now(MDT) - timedelta(days=7)).date().isoformat()) \
+                .execute()
+            if res.data:
+                target_row = res.data[0]
+                target_conf = str(target_row.get("tw_confirmation", "")).strip()
+                print(f"  [Match] Layer 3 HIT: email '{guest_email}' -> {target_conf}")
+        except Exception as e:
+            print(f"  [Match] Layer 3 error: {e}")
+
+    # ── Layer 4: Last name fuzzy match + upcoming date (catches family/group riders) ──
+    if not target_conf and guest_last_name and len(guest_last_name) >= 3:
+        try:
+            res = supabase.table("reservations").select("*") \
+                .gte("activity_date", (datetime.now(MDT) - timedelta(days=2)).date().isoformat()) \
+                .ilike("guest_name", f"%{guest_last_name.strip()}%") \
+                .execute()
+            if res.data:
+                target_row = res.data[0]
+                target_conf = str(target_row.get("tw_confirmation", "")).strip()
+                print(f"  [Match] Layer 4 HIT: last name '{guest_last_name}' -> {target_conf} ({target_row.get('guest_name')})")
+        except Exception as e:
+            print(f"  [Match] Layer 4 error: {e}")
+
+    # ── Layer 5: Experience name + upcoming date (broadest — matches by activity) ──
+    if not target_conf and experience_name:
+        try:
+            res = supabase.table("reservations").select("*") \
+                .gte("activity_date", (datetime.now(MDT) - timedelta(days=2)).date().isoformat()) \
+                .ilike("activity_name", f"%{experience_name.strip()}%") \
+                .execute()
+            if res.data:
+                # Try to narrow by last name if available
+                if guest_last_name:
+                    for r in res.data:
+                        if guest_last_name.lower() in str(r.get("guest_name", "")).lower():
+                            target_row = r
+                            target_conf = str(r.get("tw_confirmation", "")).strip()
+                            break
+                if not target_conf:
+                    target_row = res.data[0]
+                    target_conf = str(target_row.get("tw_confirmation", "")).strip()
+                print(f"  [Match] Layer 5 HIT: experience '{experience_name}' -> {target_conf}")
+        except Exception as e:
+            print(f"  [Match] Layer 5 error: {e}")
+
+    # ── Layer 6: Email-only fallback (no date constraint — last resort for legacy) ──
+    if not target_conf and guest_email:
+        try:
+            res = supabase.table("reservations").select("*") \
+                .eq("email", guest_email) \
+                .order("activity_date", desc=True) \
+                .limit(1) \
+                .execute()
+            if res.data:
+                target_row = res.data[0]
+                target_conf = str(target_row.get("tw_confirmation", "")).strip()
+                print(f"  [Match] Layer 6 HIT: email-only '{guest_email}' -> {target_conf}")
+        except Exception as e:
+            print(f"  [Match] Layer 6 error: {e}")
 
     if target_conf and target_row:
-        # Execute Self-Healing Framework
+        # Self-Healing: backfill booking ID for future Layer-1 fast-path matching
+        if order_id:
+            existing_ids = target_row.get("tw_booking_ids") or []
+            if int(order_id) not in existing_ids:
+                try:
+                    new_ids = existing_ids + [int(order_id)]
+                    supabase.table("reservations").update({"tw_booking_ids": new_ids}).eq("tw_confirmation", target_conf).execute()
+                    print(f"  [Self-Healing] Backfilled booking_id={order_id} into {target_conf}")
+                except Exception:
+                    pass
+
+        # Execute Self-Healing Framework (email, phone, party size)
         healed_fields = _self_heal_database(target_row, body, target_conf)
         
         # Increment Waiver Count
