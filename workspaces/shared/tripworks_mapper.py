@@ -785,6 +785,24 @@ def _build_single_payload(row: dict, row_index: int) -> dict:
         vehicle_qty=tt_info.get("vehicle_qty", 1),
     )
 
+    # GUIDE QTY VALIDATION: total guide qty MUST equal vehicle_qty
+    # Exception: Moab Discovery Tour auto-scales in MPOWR
+    vehicle_qty_val = tt_info.get("vehicle_qty", 1)
+    if guide_addons and mpowr_activity != "Moab Discovery Tour":
+        total_guide_qty = sum(g["quantity"] for g in guide_addons)
+        if total_guide_qty != vehicle_qty_val:
+            if len(guide_addons) == 1:
+                guide_addons[0]["quantity"] = vehicle_qty_val
+            else:
+                scale = vehicle_qty_val / total_guide_qty if total_guide_qty > 0 else 1
+                adjusted = 0
+                for idx, g in enumerate(guide_addons):
+                    if idx == len(guide_addons) - 1:
+                        g["quantity"] = vehicle_qty_val - adjusted
+                    else:
+                        g["quantity"] = max(1, round(g["quantity"] * scale))
+                        adjusted += g["quantity"]
+
     # Insurance
     has_adventure_assure = row.get("has_adventure_assure", False)
     insurance_choice = "paid" if has_adventure_assure else "free"
@@ -1050,6 +1068,34 @@ def build_payloads_from_webhook(webhook_json: dict) -> list[dict]:
             guide_breakdown=tt_info.get("guide_breakdown", []),
             vehicle_qty=tt_info.get("vehicle_qty", 1),
         )
+        
+        # ================================================================
+        # GUIDE QTY VALIDATION: total guide qty MUST equal vehicle_qty
+        # Exception: Moab Discovery Tour auto-scales in MPOWR
+        # ================================================================
+        vehicle_qty_val = tt_info.get("vehicle_qty", 1)
+        if guide_addons and mpowr_activity != "Moab Discovery Tour":
+            total_guide_qty = sum(g["quantity"] for g in guide_addons)
+            if total_guide_qty != vehicle_qty_val:
+                import logging
+                _log = logging.getLogger("dome.tripworks_mapper")
+                _log.warning(
+                    f"[Guide Fix] Guide qty mismatch for {tw_conf}: "
+                    f"guides={total_guide_qty}, vehicles={vehicle_qty_val}. Correcting."
+                )
+                if len(guide_addons) == 1:
+                    # Single guide type: just set quantity to match vehicles
+                    guide_addons[0]["quantity"] = vehicle_qty_val
+                else:
+                    # Mixed guide types: scale proportionally, remainder on last
+                    scale = vehicle_qty_val / total_guide_qty if total_guide_qty > 0 else 1
+                    adjusted = 0
+                    for idx, g in enumerate(guide_addons):
+                        if idx == len(guide_addons) - 1:
+                            g["quantity"] = vehicle_qty_val - adjusted
+                        else:
+                            g["quantity"] = max(1, round(g["quantity"] * scale))
+                            adjusted += g["quantity"]
         
         # Party size from pax_count
         party_size = order.get("pax_count", 1)

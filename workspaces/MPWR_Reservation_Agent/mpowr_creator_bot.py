@@ -853,51 +853,78 @@ class MpowrCreatorBot:
 
             print(f"  Found {input_count} price input field(s).")
 
-            # Strategy: if there's only 1 input, set the total target price.
-            # If there are multiple (one per vehicle/line item), split the target evenly.
-            num_to_adjust = min(input_count, max(vehicle_qty, 1))
+            # ================================================================
+            # DIFFERENCE-BASED ADJUSTMENT (FIX: was overwriting with full subtotal)
+            # ================================================================
+            # target_price = what the SUBTOTAL should be (vehicle + guides + addons)
+            # mpowr_price  = what the SUBTOTAL currently is
+            # We must NOT set vehicle price = target_price, because subtotal
+            # includes guide services. Instead, calculate the DIFFERENCE and
+            # adjust each vehicle price input by that difference.
+            #
+            # Formula: new_vehicle_price = current_vehicle_price + (target - current_subtotal) / num_vehicles
+            # ================================================================
 
-            if num_to_adjust == 1:
-                # Single input: set the total target price directly
-                price_input = price_inputs.first
+            num_to_adjust = min(input_count, max(vehicle_qty, 1))
+            total_adjustment = round(target_price - mpowr_price, 2)
+            print(f"  Subtotal adjustment needed: ${total_adjustment:+.2f} (target ${target_price:.2f} - current ${mpowr_price:.2f})")
+
+            # Read current values from each price input before modifying
+            current_values = []
+            for i in range(num_to_adjust):
+                price_input = price_inputs.nth(i)
+                try:
+                    raw_val = price_input.input_value()
+                    current_val = float(raw_val.replace(",", "").replace("$", "")) if raw_val else 0.0
+                except (ValueError, TypeError):
+                    current_val = 0.0
+                current_values.append(current_val)
+                print(f"  Vehicle {i+1} current price: ${current_val:.2f}")
+
+            # Calculate per-vehicle adjustment
+            per_vehicle_adjustment = round(total_adjustment / num_to_adjust, 2)
+            # Handle penny rounding: put remainder on first vehicle
+            remainder_cents = round(total_adjustment - (per_vehicle_adjustment * num_to_adjust), 2)
+
+            for i in range(num_to_adjust):
+                price_input = price_inputs.nth(i)
+                adj = per_vehicle_adjustment + (remainder_cents if i == 0 else 0)
+                new_price = round(current_values[i] + adj, 2)
+
+                # Safety: never set a negative price
+                if new_price < 0:
+                    print(f"  🚨 Vehicle {i+1} would go negative (${new_price:.2f}). Setting to $0.01.")
+                    new_price = 0.01
+
                 price_input.scroll_into_view_if_needed()
                 price_input.click()
                 price_input.fill("")
-                price_input.fill(f"{target_price:.2f}")
-                print(f"  Set price input to ${target_price:.2f}")
-            else:
-                # Multiple inputs: split target price evenly with remainder on first
-                per_unit = round(target_price / num_to_adjust, 2)
-                remainder = round(target_price - (per_unit * num_to_adjust), 2)
-
-                for i in range(num_to_adjust):
-                    price_input = price_inputs.nth(i)
-                    unit_price = per_unit + remainder if i == 0 else per_unit
-
-                    price_input.scroll_into_view_if_needed()
-                    price_input.click()
-                    price_input.fill("")
-                    price_input.fill(f"{unit_price:.2f}")
-                    print(f"  Set vehicle {i+1} price to ${unit_price:.2f}")
+                price_input.fill(f"{new_price:.2f}")
+                print(f"  Vehicle {i+1}: ${current_values[i]:.2f} → ${new_price:.2f} (adj: ${adj:+.2f})")
 
             # Wait for the Subtotal to update
             time.sleep(2)
 
             # Verify the new subtotal matches
+            verified = False
             try:
                 subtotal_node2 = self._page.get_by_text("Subtotal", exact=True).first
                 if subtotal_node2.is_visible(timeout=3000):
                     new_text = subtotal_node2.evaluate("el => el.parentElement.innerText")
                     new_match = re.search(r'\$\s*([\d,]+(?:\.\d{2})?)', new_text)
                     if new_match:
-                        new_price = float(new_match.group(1).replace(",", ""))
-                        print(f"  New Subtotal: ${new_price:.2f}")
-                        if abs(new_price - target_price) < 0.02:
-                            print(f"  ✅ Price override confirmed!")
+                        new_subtotal = float(new_match.group(1).replace(",", ""))
+                        print(f"  New Subtotal: ${new_subtotal:.2f} (target: ${target_price:.2f})")
+                        if abs(new_subtotal - target_price) < 0.02:
+                            print(f"  ✅ Price override confirmed! Subtotal matches target.")
+                            verified = True
                         else:
-                            print(f"  ⚠️ Subtotal is ${new_price:.2f} but target was ${target_price:.2f}")
+                            print(f"  ⚠️ Subtotal ${new_subtotal:.2f} doesn't match target ${target_price:.2f} (diff: ${abs(new_subtotal - target_price):.2f})")
             except Exception:
                 pass  # Non-fatal: we already filled the inputs
+
+            if not verified:
+                print(f"  ⚠️ Could not verify subtotal match. Price inputs were set but verification failed.")
 
             # Scroll back down to customer info / submit section
             self._page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
